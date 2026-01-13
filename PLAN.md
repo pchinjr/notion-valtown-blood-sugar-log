@@ -4,8 +4,10 @@
 
 - A Notion database for blood sugar readings
 - A Val Town script that pulls the last 7 days of entries
-- Weekly stats (avg/min/max, completion rate, streak, badges)
-- A friendly email report sent on a schedule
+- Weekly stats with streaks, XP, and Praise Cage-themed badges
+- A friendly email report sent on a schedule (free tier friendly)
+- Tests for core logic (streaks, badges, XP)
+- A SQLite rollup module stub for future storage
 
 ## Why this works well
 
@@ -40,3 +42,10 @@ For each new Notion database:
 3) Generate emails or dashboards from the stored rollups.
 
 This keeps the system simple while still scaling to many life areas.
+
+## What’s left to do
+
+- Wire the weekly report to write rollups into SQLite after each run
+- Define XP/badge rule config so new trackers can reuse it
+- Add monthly and yearly rollup reports (from SQLite, not Notion)
+- Add a sample “collector” val for another Notion database (e.g., exercise)

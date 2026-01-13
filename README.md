@@ -2,7 +2,7 @@
 
 This repo contains a Val Town-ready script that:
 - queries a Notion database for the last 7 days of blood sugar entries (UTC date range)
-- computes simple stats (avg/min/max, count, missing entries, expected 2 per day)
+- computes stats, streaks, XP, and badges (expected 2 per day)
 - emails a weekly rollup to your Val Town account (free tier friendly)
 
 ## What this does (plain language)
@@ -22,6 +22,16 @@ Even though this feels simple, it uses a few classic CS ideas:
 - **Automation:** a scheduled job runs the same steps every week.
 
 If you can build or understand this, you’re already practicing real CS thinking—just without the scary jargon.
+
+## Praise Cage mode
+
+This project includes playful, Praise Cage-themed badges:
+- “Mandy-Mode Consistency”
+- “Cage Match: Full Week”
+- “Cage Match: Double-Check Champion”
+- “National Treasure: Healthy Average”
+
+You can rename or swap these in `notion_weekly_report.ts`.
 
 ## Medical disclaimer
 
@@ -93,3 +103,5 @@ In other words: every Tuesday at 9:30am.
 
 - Adjust the stats, date range, or email formatting in `notion_weekly_report.ts`.
 - If you prefer different property names, update them in the script.
+
+Made with 🖖 by Paul Chin Jr. and Markal.
