@@ -8,8 +8,25 @@ const REPORT_FROM_EMAIL = Deno.env.get("REPORT_FROM_EMAIL");
 const REPORT_FROM_NAME = Deno.env.get("REPORT_FROM_NAME");
 const REPORT_REPLY_TO = Deno.env.get("REPORT_REPLY_TO");
 
+type NotionRichText = { plain_text: string };
+type NotionDateProperty = { date: { start: string } | null };
+type NotionNumberProperty = { number: number | null };
+type NotionTextProperty = { rich_text: NotionRichText[] };
+type NotionCreatedTimeProperty = { created_time: string };
+
 type NotionPage = {
-  properties: Record<string, any>;
+  properties: {
+    "Measurement Date"?: NotionDateProperty;
+    "Blood Sugar Level"?: NotionNumberProperty;
+    "Created Time"?: NotionCreatedTimeProperty | NotionTextProperty;
+    "Notes"?: NotionTextProperty;
+  };
+};
+
+type NotionQueryResponse = {
+  results: NotionPage[];
+  has_more: boolean;
+  next_cursor: string | null;
 };
 
 type Entry = {
@@ -24,13 +41,18 @@ export default async function handler(): Promise<Response> {
     return new Response("Missing required secrets.", { status: 500 });
   }
 
+  // Use a fixed 7-day range ending today (UTC) for weekly rollups.
   const { start, end } = getWeeklyRange();
   console.log(`Weekly range: ${start} to ${end}`);
   const entries = await fetchEntries(start, end);
   console.log(`Fetched ${entries.length} entries from Notion`);
   const report = buildReport(entries, start, end);
   console.log("Report subject:", report.subject);
+  if (!REPORT_TO) {
+    console.log("REPORT_TO not set; sending to Val Town account owner (free tier default).");
+  }
 
+  // Build the payload to match Val Town's std/email expectations.
   const emailPayload = {
     subject: report.subject,
     text: report.text,
@@ -78,6 +100,7 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
   let cursor: string | undefined;
 
   do {
+    // Query by Measurement Date in the selected range, sorted ascending.
     const body = {
       filter: {
         and: [
@@ -100,8 +123,11 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
       throw new Error(`Notion query failed: ${response.status} ${text}`);
     }
 
-    const data = await response.json();
-    for (const page of data.results as NotionPage[]) {
+    const data = (await response.json()) as unknown;
+    if (!isNotionQueryResponse(data)) {
+      throw new Error("Notion query returned unexpected shape.");
+    }
+    for (const page of data.results) {
       const entry = parseEntry(page);
       if (entry) entries.push(entry);
     }
@@ -114,26 +140,31 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
 
 function parseEntry(page: NotionPage): Entry | null {
   const props = page.properties ?? {};
-  const date = props["Measurement Date"]?.date?.start;
-  const value = props["Blood Sugar Level"]?.number;
+  const date = props["Measurement Date"]?.date?.start ?? null;
+  const value = props["Blood Sugar Level"]?.number ?? null;
   if (!date || typeof value !== "number") return null;
 
-  const createdTime =
-    props["Created Time"]?.created_time ??
-    props["Created Time"]?.rich_text?.[0]?.plain_text ??
-    null;
+  // "Created Time" can be a Created time field or a text property.
+  const createdProp = props["Created Time"];
+  const createdTime = isCreatedTimeProperty(createdProp)
+    ? createdProp.created_time
+    : isTextProperty(createdProp)
+    ? createdProp.rich_text?.[0]?.plain_text ?? null
+    : null;
   const notes = props["Notes"]?.rich_text?.[0]?.plain_text ?? null;
 
   return { date: date.slice(0, 10), createdTime, value, notes };
 }
 
 function buildReport(entries: Entry[], start: string, end: string) {
+  // Summary stats for the weekly rollup.
   const values = entries.map((entry) => entry.value);
   const count = values.length;
   const avg = count ? Math.round((values.reduce((a, b) => a + b, 0) / count) * 10) / 10 : 0;
   const min = count ? Math.min(...values) : 0;
   const max = count ? Math.max(...values) : 0;
 
+  // Expect 2 entries per day unless you decide otherwise.
   const days = daysBetweenInclusive(start, end);
   const expected = days * 2;
   const missing = Math.max(0, expected - count);
@@ -183,6 +214,7 @@ function renderHtmlReport(
     max: number;
   },
 ): string {
+  // Simple HTML table for quick scanning in email clients.
   const rows = entries
     .map((entry) => {
       const notes = entry.notes ? escapeHtml(entry.notes) : "";
@@ -225,4 +257,24 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function isNotionQueryResponse(value: unknown): value is NotionQueryResponse {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    Array.isArray(record.results) &&
+    typeof record.has_more === "boolean" &&
+    (typeof record.next_cursor === "string" || record.next_cursor === null)
+  );
+}
+
+function isCreatedTimeProperty(value: unknown): value is NotionCreatedTimeProperty {
+  if (!value || typeof value !== "object") return false;
+  return "created_time" in (value as Record<string, unknown>);
+}
+
+function isTextProperty(value: unknown): value is NotionTextProperty {
+  if (!value || typeof value !== "object") return false;
+  return "rich_text" in (value as Record<string, unknown>);
 }

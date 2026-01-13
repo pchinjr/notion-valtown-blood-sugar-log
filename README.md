@@ -1,16 +1,16 @@
 # Notion Blood Sugar Weekly Rollup (Val Town)
 
 This repo contains a Val Town-ready script that:
-- queries a Notion database for the last 7 days of blood sugar entries
-- computes simple stats (avg/min/max, count, missing entries)
-- emails a weekly rollup
+- queries a Notion database for the last 7 days of blood sugar entries (UTC date range)
+- computes simple stats (avg/min/max, count, missing entries, expected 2 per day)
+- emails a weekly rollup to your Val Town account (free tier friendly)
 
 ## 1) Create the Notion database
 
 Create a new database in Notion (table view is easiest) with these properties:
 
 - **Entry** (Title)
-- **Created Time** (Text) (e.g., `January 13, 2026 2:29 PM`)
+- **Created Time** (Created time) or **Created Time** (Text)
 - **Measurement Date** (Date) (e.g., `January 13, 2026`)
 - **Blood Sugar Level** (Number)
 - **Notes** (Text) (optional)
@@ -36,8 +36,9 @@ Add these secrets in Val Town (Settings → Secrets):
 - `REPORT_FROM_EMAIL` (optional, must be `your_username.valname@valtown.email`)
 - `REPORT_FROM_NAME` (optional)
 - `REPORT_REPLY_TO` (optional)
+- `REPORT_TO` (optional; only set on Val Town Pro)
 
-Free tier note: `REPORT_TO` is optional. If omitted, Val Town emails the account owner.
+Free tier note: `REPORT_TO` must be omitted unless you are on Val Town Pro.
 
 ## 4) Schedule the report
 
