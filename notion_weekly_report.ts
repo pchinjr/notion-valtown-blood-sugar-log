@@ -4,7 +4,9 @@ const NOTION_VERSION = "2022-06-28";
 const NOTION_TOKEN = Deno.env.get("NOTION_TOKEN");
 const NOTION_DATABASE_ID = Deno.env.get("NOTION_DATABASE_ID");
 const REPORT_TO = Deno.env.get("REPORT_TO");
-const REPORT_FROM = Deno.env.get("REPORT_FROM");
+const REPORT_FROM_EMAIL = Deno.env.get("REPORT_FROM_EMAIL");
+const REPORT_FROM_NAME = Deno.env.get("REPORT_FROM_NAME");
+const REPORT_REPLY_TO = Deno.env.get("REPORT_REPLY_TO");
 
 type NotionPage = {
   properties: Record<string, any>;
@@ -18,7 +20,7 @@ type Entry = {
 };
 
 export default async function handler(): Promise<Response> {
-  if (!NOTION_TOKEN || !NOTION_DATABASE_ID || !REPORT_TO) {
+  if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
     return new Response("Missing required secrets.", { status: 500 });
   }
 
@@ -30,17 +32,25 @@ export default async function handler(): Promise<Response> {
   console.log("Report subject:", report.subject);
 
   const emailPayload = {
-    to: REPORT_TO,
     subject: report.subject,
     text: report.text,
     html: report.html,
-    ...(REPORT_FROM ? { from: REPORT_FROM } : {}),
+    ...(buildFrom(REPORT_FROM_EMAIL, REPORT_FROM_NAME) ?? {}),
+    ...(REPORT_REPLY_TO ? { replyTo: REPORT_REPLY_TO } : {}),
+    ...(REPORT_TO ? { to: REPORT_TO } : {}),
   };
 
   await email(emailPayload);
   console.log(`Email sent to ${REPORT_TO}`);
 
   return new Response("Weekly report sent.", { status: 200 });
+}
+
+function buildFrom(email?: string | null, name?: string | null) {
+  if (!email) return null;
+  return {
+    from: name ? { email, name } : { email },
+  };
 }
 
 function getWeeklyRange(): { start: string; end: string } {

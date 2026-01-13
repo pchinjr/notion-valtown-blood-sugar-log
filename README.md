@@ -33,8 +33,11 @@ Create a new Val in Val Town and paste `notion_weekly_report.ts`.
 Add these secrets in Val Town (Settings → Secrets):
 - `NOTION_TOKEN`
 - `NOTION_DATABASE_ID`
-- `REPORT_TO`
-- `REPORT_FROM`
+- `REPORT_FROM_EMAIL` (optional, must be `your_username.valname@valtown.email`)
+- `REPORT_FROM_NAME` (optional)
+- `REPORT_REPLY_TO` (optional)
+
+Free tier note: `REPORT_TO` is optional. If omitted, Val Town emails the account owner.
 
 ## 4) Schedule the report
 
