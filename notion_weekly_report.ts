@@ -1,20 +1,14 @@
 import { email } from "https://esm.town/v/std/email";
 
 const NOTION_VERSION = "2022-06-28";
-const NOTION_TOKEN = Deno.env.get("NOTION_TOKEN");
-const NOTION_DATABASE_ID = Deno.env.get("NOTION_DATABASE_ID");
-const REPORT_TO = Deno.env.get("REPORT_TO");
-const REPORT_FROM_EMAIL = Deno.env.get("REPORT_FROM_EMAIL");
-const REPORT_FROM_NAME = Deno.env.get("REPORT_FROM_NAME");
-const REPORT_REPLY_TO = Deno.env.get("REPORT_REPLY_TO");
 
-type NotionRichText = { plain_text: string };
-type NotionDateProperty = { date: { start: string } | null };
-type NotionNumberProperty = { number: number | null };
-type NotionTextProperty = { rich_text: NotionRichText[] };
-type NotionCreatedTimeProperty = { created_time: string };
+export type NotionRichText = { plain_text: string };
+export type NotionDateProperty = { date: { start: string } | null };
+export type NotionNumberProperty = { number: number | null };
+export type NotionTextProperty = { rich_text: NotionRichText[] };
+export type NotionCreatedTimeProperty = { created_time: string };
 
-type NotionPage = {
+export type NotionPage = {
   properties: {
     "Measurement Date"?: NotionDateProperty;
     "Blood Sugar Level"?: NotionNumberProperty;
@@ -23,13 +17,13 @@ type NotionPage = {
   };
 };
 
-type NotionQueryResponse = {
+export type NotionQueryResponse = {
   results: NotionPage[];
   has_more: boolean;
   next_cursor: string | null;
 };
 
-type Entry = {
+export type Entry = {
   date: string;
   createdTime: string | null;
   value: number;
@@ -37,18 +31,21 @@ type Entry = {
 };
 
 export default async function handler(): Promise<Response> {
-  if (!NOTION_TOKEN || !NOTION_DATABASE_ID) {
+  const notionConfig = getNotionConfig();
+  const emailConfig = getEmailConfig();
+
+  if (!notionConfig) {
     return new Response("Missing required secrets.", { status: 500 });
   }
 
   // Use a fixed 7-day range ending today (UTC) for weekly rollups.
   const { start, end } = getWeeklyRange();
   console.log(`Weekly range: ${start} to ${end}`);
-  const entries = await fetchEntries(start, end);
+  const entries = await fetchEntries(start, end, notionConfig);
   console.log(`Fetched ${entries.length} entries from Notion`);
   const report = buildReport(entries, start, end);
   console.log("Report subject:", report.subject);
-  if (!REPORT_TO) {
+  if (!emailConfig?.to) {
     console.log("REPORT_TO not set; sending to Val Town account owner (free tier default).");
   }
 
@@ -57,13 +54,13 @@ export default async function handler(): Promise<Response> {
     subject: report.subject,
     text: report.text,
     html: report.html,
-    ...(buildFrom(REPORT_FROM_EMAIL, REPORT_FROM_NAME) ?? {}),
-    ...(REPORT_REPLY_TO ? { replyTo: REPORT_REPLY_TO } : {}),
-    ...(REPORT_TO ? { to: REPORT_TO } : {}),
+    ...(buildFrom(emailConfig?.fromEmail, emailConfig?.fromName) ?? {}),
+    ...(emailConfig?.replyTo ? { replyTo: emailConfig.replyTo } : {}),
+    ...(emailConfig?.to ? { to: emailConfig.to } : {}),
   };
 
   await email(emailPayload);
-  console.log(`Email sent to ${REPORT_TO}`);
+  console.log(`Email sent${emailConfig?.to ? ` to ${emailConfig.to}` : ""}`);
 
   return new Response("Weekly report sent.", { status: 200 });
 }
@@ -75,7 +72,7 @@ function buildFrom(email?: string | null, name?: string | null) {
   };
 }
 
-function getWeeklyRange(): { start: string; end: string } {
+export function getWeeklyRange(): { start: string; end: string } {
   const today = new Date();
   const end = toDateOnly(today);
   const startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
@@ -84,14 +81,46 @@ function getWeeklyRange(): { start: string; end: string } {
   return { start, end };
 }
 
-function toDateOnly(date: Date): string {
+export function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function fetchEntries(start: string, end: string): Promise<Entry[]> {
-  const url = `https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`;
+type NotionConfig = {
+  token: string;
+  databaseId: string;
+};
+
+type EmailConfig = {
+  to?: string;
+  fromEmail?: string;
+  fromName?: string;
+  replyTo?: string;
+};
+
+function getNotionConfig(): NotionConfig | null {
+  const token = Deno.env.get("NOTION_TOKEN");
+  const databaseId = Deno.env.get("NOTION_DATABASE_ID");
+  if (!token || !databaseId) return null;
+  return { token, databaseId };
+}
+
+function getEmailConfig(): EmailConfig | null {
+  const to = Deno.env.get("REPORT_TO") ?? undefined;
+  const fromEmail = Deno.env.get("REPORT_FROM_EMAIL") ?? undefined;
+  const fromName = Deno.env.get("REPORT_FROM_NAME") ?? undefined;
+  const replyTo = Deno.env.get("REPORT_REPLY_TO") ?? undefined;
+  if (!to && !fromEmail && !fromName && !replyTo) return null;
+  return { to, fromEmail, fromName, replyTo };
+}
+
+export async function fetchEntries(
+  start: string,
+  end: string,
+  notionConfig: NotionConfig,
+): Promise<Entry[]> {
+  const url = `https://api.notion.com/v1/databases/${notionConfig.databaseId}/query`;
   const headers = {
-    Authorization: `Bearer ${NOTION_TOKEN}`,
+    Authorization: `Bearer ${notionConfig.token}`,
     "Notion-Version": NOTION_VERSION,
     "Content-Type": "application/json",
   };
@@ -138,7 +167,7 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
   return entries;
 }
 
-function parseEntry(page: NotionPage): Entry | null {
+export function parseEntry(page: NotionPage): Entry | null {
   const props = page.properties ?? {};
   const date = props["Measurement Date"]?.date?.start ?? null;
   const value = props["Blood Sugar Level"]?.number ?? null;
@@ -156,7 +185,7 @@ function parseEntry(page: NotionPage): Entry | null {
   return { date: date.slice(0, 10), createdTime, value, notes };
 }
 
-function buildReport(entries: Entry[], start: string, end: string) {
+export function buildReport(entries: Entry[], start: string, end: string) {
   // Summary stats for the weekly rollup.
   const values = entries.map((entry) => entry.value);
   const count = values.length;
@@ -168,6 +197,14 @@ function buildReport(entries: Entry[], start: string, end: string) {
   const days = daysBetweenInclusive(start, end);
   const expected = days * 2;
   const missing = Math.max(0, expected - count);
+  const dateCounts = countEntriesByDate(entries);
+  const dateRange = listDateRange(start, end);
+  const currentStreak = calculateCurrentStreak(dateRange, dateCounts);
+  const completionRate = expected ? Math.round((count / expected) * 100) : 0;
+  const badges = buildBadges(dateRange, dateCounts, count, avg);
+  const encouragement = buildEncouragement(completionRate, currentStreak);
+  const disclaimer =
+    "Not medical advice. Educational info only. Source: https://www.ynhhs.org/articles/what-is-healthy-blood-sugar";
 
   const subject = `Blood Sugar Weekly Rollup (${start} → ${end})`;
 
@@ -177,31 +214,107 @@ function buildReport(entries: Entry[], start: string, end: string) {
     `Average: ${avg}`,
     `Min: ${min}`,
     `Max: ${max}`,
+    `Completion: ${completionRate}%`,
+    `Current streak: ${currentStreak} day${currentStreak === 1 ? "" : "s"}`,
+    `Badges: ${badges.length ? badges.join(", ") : "No badges yet"}`,
+    `Encouragement: ${encouragement}`,
+    `Disclaimer: ${disclaimer}`,
     "",
     "Entries:",
     ...entries.map(formatEntryLine),
   ];
 
   const text = lines.join("\n");
-  const html = renderHtmlReport(entries, { start, end, count, expected, missing, avg, min, max });
+  const html = renderHtmlReport(entries, {
+    start,
+    end,
+    count,
+    expected,
+    missing,
+    avg,
+    min,
+    max,
+    completionRate,
+    currentStreak,
+    badges,
+    encouragement,
+    disclaimer,
+  });
 
   return { subject, text, html };
 }
 
-function daysBetweenInclusive(start: string, end: string): number {
+export function daysBetweenInclusive(start: string, end: string): number {
   const startDate = new Date(`${start}T00:00:00Z`);
   const endDate = new Date(`${end}T00:00:00Z`);
   const ms = endDate.getTime() - startDate.getTime();
   return Math.floor(ms / 86400000) + 1;
 }
 
-function formatEntryLine(entry: Entry): string {
+export function listDateRange(start: string, end: string): string[] {
+  const startDate = new Date(`${start}T00:00:00Z`);
+  const endDate = new Date(`${end}T00:00:00Z`);
+  const dates: string[] = [];
+  const cursor = new Date(startDate.getTime());
+  while (cursor <= endDate) {
+    dates.push(toDateOnly(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+export function countEntriesByDate(entries: Entry[]): Record<string, number> {
+  return entries.reduce<Record<string, number>>((acc, entry) => {
+    acc[entry.date] = (acc[entry.date] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+export function calculateCurrentStreak(dateRange: string[], dateCounts: Record<string, number>): number {
+  let streak = 0;
+  for (let i = dateRange.length - 1; i >= 0; i -= 1) {
+    const date = dateRange[i];
+    if ((dateCounts[date] ?? 0) > 0) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+export function buildBadges(
+  dateRange: string[],
+  dateCounts: Record<string, number>,
+  totalCount: number,
+  avg: number,
+): string[] {
+  const badges: string[] = [];
+  const hasEveryDay = dateRange.every((date) => (dateCounts[date] ?? 0) > 0);
+  const hasTwoPerDay = dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
+  if (hasEveryDay) badges.push("Daily Logger");
+  if (hasTwoPerDay) badges.push("Twice a Day Champ");
+  if (totalCount >= 7) badges.push("Consistency Star");
+  if (totalCount >= 14) badges.push("Full Week Pro");
+  if (avg > 0 && avg <= 99) badges.push("Healthy Average (≤ 99 mg/dL)");
+  return badges;
+}
+
+export function buildEncouragement(completionRate: number, streak: number): string {
+  if (completionRate >= 90) return "Amazing work — you kept a near-perfect log this week.";
+  if (completionRate >= 70) return "Great consistency — you’re building a strong habit.";
+  if (completionRate >= 40) return "Nice progress — a few more check-ins will make this even stronger.";
+  if (streak >= 3) return "You’re on a streak — keep it going!";
+  return "Every entry helps — you’ve got this.";
+}
+
+export function formatEntryLine(entry: Entry): string {
   const time = entry.createdTime ? ` (${entry.createdTime})` : "";
   const notes = entry.notes ? ` — ${entry.notes}` : "";
   return `${entry.date}${time}: ${entry.value}${notes}`;
 }
 
-function renderHtmlReport(
+export function renderHtmlReport(
   entries: Entry[],
   stats: {
     start: string;
@@ -212,6 +325,11 @@ function renderHtmlReport(
     avg: number;
     min: number;
     max: number;
+    completionRate: number;
+    currentStreak: number;
+    badges: string[];
+    encouragement: string;
+    disclaimer: string;
   },
 ): string {
   // Simple HTML table for quick scanning in email clients.
@@ -232,6 +350,11 @@ function renderHtmlReport(
         <li><strong>Average:</strong> ${stats.avg}</li>
         <li><strong>Min:</strong> ${stats.min}</li>
         <li><strong>Max:</strong> ${stats.max}</li>
+        <li><strong>Completion:</strong> ${stats.completionRate}%</li>
+        <li><strong>Current streak:</strong> ${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</li>
+        <li><strong>Badges:</strong> ${stats.badges.length ? stats.badges.join(", ") : "No badges yet"}</li>
+        <li><strong>Encouragement:</strong> ${escapeHtml(stats.encouragement)}</li>
+        <li><strong>Disclaimer:</strong> ${escapeHtml(stats.disclaimer)}</li>
       </ul>
       <table style="border-collapse: collapse; width: 100%;">
         <thead>
@@ -250,7 +373,7 @@ function renderHtmlReport(
   `;
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -259,7 +382,7 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function isNotionQueryResponse(value: unknown): value is NotionQueryResponse {
+export function isNotionQueryResponse(value: unknown): value is NotionQueryResponse {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
   return (
@@ -269,12 +392,12 @@ function isNotionQueryResponse(value: unknown): value is NotionQueryResponse {
   );
 }
 
-function isCreatedTimeProperty(value: unknown): value is NotionCreatedTimeProperty {
+export function isCreatedTimeProperty(value: unknown): value is NotionCreatedTimeProperty {
   if (!value || typeof value !== "object") return false;
   return "created_time" in (value as Record<string, unknown>);
 }
 
-function isTextProperty(value: unknown): value is NotionTextProperty {
+export function isTextProperty(value: unknown): value is NotionTextProperty {
   if (!value || typeof value !== "object") return false;
   return "rich_text" in (value as Record<string, unknown>);
 }

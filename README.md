@@ -23,6 +23,12 @@ Even though this feels simple, it uses a few classic CS ideas:
 
 If you can build or understand this, you’re already practicing real CS thinking—just without the scary jargon.
 
+## Medical disclaimer
+
+This report is for informational purposes only and is not medical advice.
+Healthy blood sugar ranges referenced here come from:
+https://www.ynhhs.org/articles/what-is-healthy-blood-sugar
+
 ## 1) Create the Notion database
 
 Create a new database in Notion (table view is easiest) with these properties:

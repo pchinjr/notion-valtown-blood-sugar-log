@@ -25,5 +25,8 @@
     "unstable-temporal": true,
     "unstable-worker-options": true,
     "unstable-sloppy-imports": true
+  },
+  "tasks": {
+    "test": "deno test --allow-import --reporter=dot"
   }
 }
