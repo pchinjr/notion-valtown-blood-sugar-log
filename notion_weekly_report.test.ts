@@ -58,8 +58,8 @@ Deno.test("buildBadges awards consistency and healthy average", () => {
     "2026-01-07": 2,
   };
   const badges = buildBadges(range, counts, 14, 95, true);
-  assertEquals(badges.includes("Perfect Week Streak (2/day for 7 days)"), true);
-  assertEquals(badges.includes("Healthy Average (< 100 mg/dL)"), true);
+  assertEquals(badges.includes("Cage Match: Double-Check Champion"), true);
+  assertEquals(badges.includes("National Treasure: Healthy Average"), true);
 });
 
 Deno.test("buildEncouragement returns positive message", () => {

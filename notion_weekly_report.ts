@@ -308,10 +308,10 @@ export function buildBadges(
   perfectWeekStreak: boolean,
 ): string[] {
   const badges: string[] = [];
-  if (totalCount >= 7) badges.push("Consistency Star");
-  if (totalCount >= 14) badges.push("Full Week Pro");
-  if (perfectWeekStreak) badges.push("Perfect Week Streak (2/day for 7 days)");
-  if (avg > 0 && avg < HEALTHY_AVG_THRESHOLD) badges.push("Healthy Average (< 100 mg/dL)");
+  if (totalCount >= 7) badges.push("Mandy-Mode Consistency");
+  if (totalCount >= 14) badges.push("Cage Match: Full Week");
+  if (perfectWeekStreak) badges.push("Cage Match: Double-Check Champion");
+  if (avg > 0 && avg < HEALTHY_AVG_THRESHOLD) badges.push("National Treasure: Healthy Average");
   return badges;
 }
 
