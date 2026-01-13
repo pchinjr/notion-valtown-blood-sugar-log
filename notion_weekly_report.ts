@@ -18,21 +18,27 @@ type Entry = {
 };
 
 export default async function handler(): Promise<Response> {
-  if (!NOTION_TOKEN || !NOTION_DATABASE_ID || !REPORT_TO || !REPORT_FROM) {
+  if (!NOTION_TOKEN || !NOTION_DATABASE_ID || !REPORT_TO) {
     return new Response("Missing required secrets.", { status: 500 });
   }
 
   const { start, end } = getWeeklyRange();
+  console.log(`Weekly range: ${start} to ${end}`);
   const entries = await fetchEntries(start, end);
+  console.log(`Fetched ${entries.length} entries from Notion`);
   const report = buildReport(entries, start, end);
+  console.log("Report subject:", report.subject);
 
-  await email({
+  const emailPayload = {
     to: REPORT_TO,
-    from: REPORT_FROM,
     subject: report.subject,
     text: report.text,
     html: report.html,
-  });
+    ...(REPORT_FROM ? { from: REPORT_FROM } : {}),
+  };
+
+  await email(emailPayload);
+  console.log(`Email sent to ${REPORT_TO}`);
 
   return new Response("Weekly report sent.", { status: 200 });
 }
