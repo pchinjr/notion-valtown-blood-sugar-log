@@ -1,6 +1,10 @@
 import { email } from "https://esm.town/v/std/email";
 
 const NOTION_VERSION = "2022-06-28";
+const XP_PER_ENTRY = 12;
+const STREAK_BONUS_MULTIPLIER = 1.2;
+const HEALTHY_AVG_BONUS_MULTIPLIER = 1.2;
+const HEALTHY_AVG_THRESHOLD = 100;
 
 export type NotionRichText = { plain_text: string };
 export type NotionDateProperty = { date: { start: string } | null };
@@ -195,11 +199,13 @@ export function buildReport(entries: Entry[], start: string, end: string) {
   const dateCounts = countEntriesByDate(entries);
   const dateRange = listDateRange(start, end);
   const currentStreak = calculateCurrentStreak(dateRange, dateCounts);
+  const perfectWeekStreak = hasPerfectWeekStreak(dateRange, dateCounts);
   const completionRate = expected ? Math.round((count / expected) * 100) : 0;
-  const badges = buildBadges(dateRange, dateCounts, count, avg);
+  const badges = buildBadges(dateRange, dateCounts, count, avg, perfectWeekStreak);
   const encouragement = buildEncouragement(completionRate, currentStreak);
   const disclaimer =
     "Not medical advice. Educational info only. Source: https://www.ynhhs.org/articles/what-is-healthy-blood-sugar";
+  const xp = calculateXp(count, avg, perfectWeekStreak);
 
   const subject = `Blood Sugar Weekly Rollup (${start} → ${end})`;
 
@@ -211,6 +217,8 @@ export function buildReport(entries: Entry[], start: string, end: string) {
     `Max: ${max}`,
     `Completion: ${completionRate}%`,
     `Current streak: ${currentStreak} day${currentStreak === 1 ? "" : "s"}`,
+    `Perfect week streak: ${perfectWeekStreak ? "Yes" : "No"}`,
+    `XP earned: ${xp}`,
     `Badges: ${badges.length ? badges.join(", ") : "No badges yet"}`,
     `Encouragement: ${encouragement}`,
     `Disclaimer: ${disclaimer}`,
@@ -234,6 +242,8 @@ export function buildReport(entries: Entry[], start: string, end: string) {
     badges,
     encouragement,
     disclaimer,
+    xp,
+    perfectWeekStreak,
   });
 
   return { subject, text, html };
@@ -278,20 +288,30 @@ export function calculateCurrentStreak(dateRange: string[], dateCounts: Record<s
   return streak;
 }
 
+export function hasPerfectWeekStreak(dateRange: string[], dateCounts: Record<string, number>): boolean {
+  return dateRange.length >= 7 && dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
+}
+
+export function calculateXp(totalCount: number, avg: number, perfectWeekStreak: boolean): number {
+  const baseXp = totalCount * XP_PER_ENTRY;
+  if (baseXp === 0) return 0;
+  const streakBonus = perfectWeekStreak ? STREAK_BONUS_MULTIPLIER : 1;
+  const healthyAvgBonus = avg > 0 && avg < HEALTHY_AVG_THRESHOLD ? HEALTHY_AVG_BONUS_MULTIPLIER : 1;
+  return Math.round(baseXp * streakBonus * healthyAvgBonus);
+}
+
 export function buildBadges(
   dateRange: string[],
   dateCounts: Record<string, number>,
   totalCount: number,
   avg: number,
+  perfectWeekStreak: boolean,
 ): string[] {
   const badges: string[] = [];
-  const hasEveryDay = dateRange.every((date) => (dateCounts[date] ?? 0) > 0);
-  const hasTwoPerDay = dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
-  if (hasEveryDay) badges.push("Daily Logger");
-  if (hasTwoPerDay) badges.push("Twice a Day Champ");
   if (totalCount >= 7) badges.push("Consistency Star");
   if (totalCount >= 14) badges.push("Full Week Pro");
-  if (avg > 0 && avg <= 99) badges.push("Healthy Average (≤ 99 mg/dL)");
+  if (perfectWeekStreak) badges.push("Perfect Week Streak (2/day for 7 days)");
+  if (avg > 0 && avg < HEALTHY_AVG_THRESHOLD) badges.push("Healthy Average (< 100 mg/dL)");
   return badges;
 }
 
@@ -325,6 +345,8 @@ export function renderHtmlReport(
     badges: string[];
     encouragement: string;
     disclaimer: string;
+    xp: number;
+    perfectWeekStreak: boolean;
   },
 ): string {
   // Simple HTML table for quick scanning in email clients.
@@ -347,6 +369,8 @@ export function renderHtmlReport(
         <li><strong>Max:</strong> ${stats.max}</li>
         <li><strong>Completion:</strong> ${stats.completionRate}%</li>
         <li><strong>Current streak:</strong> ${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</li>
+        <li><strong>Perfect week streak:</strong> ${stats.perfectWeekStreak ? "Yes" : "No"}</li>
+        <li><strong>XP earned:</strong> ${stats.xp}</li>
         <li><strong>Badges:</strong> ${stats.badges.length ? stats.badges.join(", ") : "No badges yet"}</li>
         <li><strong>Encouragement:</strong> ${escapeHtml(stats.encouragement)}</li>
         <li><strong>Disclaimer:</strong> ${escapeHtml(stats.disclaimer)}</li>

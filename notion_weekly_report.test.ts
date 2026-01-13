@@ -1,8 +1,10 @@
 import {
   buildBadges,
   buildEncouragement,
+  calculateXp,
   calculateCurrentStreak,
   countEntriesByDate,
+  hasPerfectWeekStreak,
   listDateRange,
   type Entry,
 } from "./notion_weekly_report.ts";
@@ -37,14 +39,57 @@ Deno.test("countEntriesByDate aggregates by date", () => {
 });
 
 Deno.test("buildBadges awards consistency and healthy average", () => {
-  const range = ["2026-01-01", "2026-01-02", "2026-01-03"];
-  const counts = { "2026-01-01": 2, "2026-01-02": 2, "2026-01-03": 2 };
-  const badges = buildBadges(range, counts, 6, 95);
-  assertEquals(badges.includes("Twice a Day Champ"), true);
-  assertEquals(badges.includes("Healthy Average (≤ 99 mg/dL)"), true);
+  const range = [
+    "2026-01-01",
+    "2026-01-02",
+    "2026-01-03",
+    "2026-01-04",
+    "2026-01-05",
+    "2026-01-06",
+    "2026-01-07",
+  ];
+  const counts = {
+    "2026-01-01": 2,
+    "2026-01-02": 2,
+    "2026-01-03": 2,
+    "2026-01-04": 2,
+    "2026-01-05": 2,
+    "2026-01-06": 2,
+    "2026-01-07": 2,
+  };
+  const badges = buildBadges(range, counts, 14, 95, true);
+  assertEquals(badges.includes("Perfect Week Streak (2/day for 7 days)"), true);
+  assertEquals(badges.includes("Healthy Average (< 100 mg/dL)"), true);
 });
 
 Deno.test("buildEncouragement returns positive message", () => {
   const message = buildEncouragement(85, 2);
   assertStringIncludes(message, "Great");
+});
+
+Deno.test("hasPerfectWeekStreak requires two entries per day", () => {
+  const range = [
+    "2026-01-01",
+    "2026-01-02",
+    "2026-01-03",
+    "2026-01-04",
+    "2026-01-05",
+    "2026-01-06",
+    "2026-01-07",
+  ];
+  const counts = {
+    "2026-01-01": 2,
+    "2026-01-02": 2,
+    "2026-01-03": 2,
+    "2026-01-04": 2,
+    "2026-01-05": 2,
+    "2026-01-06": 2,
+    "2026-01-07": 1,
+  };
+  assertEquals(hasPerfectWeekStreak(range, counts), false);
+});
+
+Deno.test("calculateXp applies streak and healthy average bonuses", () => {
+  const xp = calculateXp(14, 95, true);
+  assertEquals(xp, 242);
 });
