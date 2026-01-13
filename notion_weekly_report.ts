@@ -45,9 +45,7 @@ export default async function handler(): Promise<Response> {
   console.log(`Fetched ${entries.length} entries from Notion`);
   const report = buildReport(entries, start, end);
   console.log("Report subject:", report.subject);
-  if (!emailConfig?.to) {
-    console.log("REPORT_TO not set; sending to Val Town account owner (free tier default).");
-  }
+  console.log("Sending email to Val Town account owner (free tier default).");
 
   // Build the payload to match Val Town's std/email expectations.
   const emailPayload = {
@@ -56,11 +54,10 @@ export default async function handler(): Promise<Response> {
     html: report.html,
     ...(buildFrom(emailConfig?.fromEmail, emailConfig?.fromName) ?? {}),
     ...(emailConfig?.replyTo ? { replyTo: emailConfig.replyTo } : {}),
-    ...(emailConfig?.to ? { to: emailConfig.to } : {}),
   };
 
   await email(emailPayload);
-  console.log(`Email sent${emailConfig?.to ? ` to ${emailConfig.to}` : ""}`);
+  console.log("Email sent.");
 
   return new Response("Weekly report sent.", { status: 200 });
 }
@@ -91,7 +88,6 @@ type NotionConfig = {
 };
 
 type EmailConfig = {
-  to?: string;
   fromEmail?: string;
   fromName?: string;
   replyTo?: string;
@@ -105,12 +101,11 @@ function getNotionConfig(): NotionConfig | null {
 }
 
 function getEmailConfig(): EmailConfig | null {
-  const to = Deno.env.get("REPORT_TO") ?? undefined;
   const fromEmail = Deno.env.get("REPORT_FROM_EMAIL") ?? undefined;
   const fromName = Deno.env.get("REPORT_FROM_NAME") ?? undefined;
   const replyTo = Deno.env.get("REPORT_REPLY_TO") ?? undefined;
-  if (!to && !fromEmail && !fromName && !replyTo) return null;
-  return { to, fromEmail, fromName, replyTo };
+  if (!fromEmail && !fromName && !replyTo) return null;
+  return { fromEmail, fromName, replyTo };
 }
 
 export async function fetchEntries(

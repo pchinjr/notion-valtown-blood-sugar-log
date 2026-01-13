@@ -60,9 +60,8 @@ Add these secrets in Val Town (Settings → Secrets):
 - `REPORT_FROM_EMAIL` (optional, must be `your_username.valname@valtown.email`)
 - `REPORT_FROM_NAME` (optional)
 - `REPORT_REPLY_TO` (optional)
-- `REPORT_TO` (optional; only set on Val Town Pro)
-
-Free tier note: `REPORT_TO` must be omitted unless you are on Val Town Pro.
+ 
+Free tier note: this val emails the account owner by default.
 
 ## 4) Schedule the report
 
