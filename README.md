@@ -5,6 +5,24 @@ This repo contains a Val Town-ready script that:
 - computes simple stats (avg/min/max, count, missing entries, expected 2 per day)
 - emails a weekly rollup to your Val Town account (free tier friendly)
 
+## What this does (plain language)
+
+Think of this as a simple weekly helper:
+- You write down blood sugar readings in Notion.
+- Once a week, the script looks at the last 7 days of entries.
+- It adds up your numbers to give you a quick summary.
+- Then it emails that summary to you automatically.
+
+## A tiny bit of computer science (friendly version)
+
+Even though this feels simple, it uses a few classic CS ideas:
+- **Data modeling:** you define what a “reading” is (date, time, value).
+- **Filtering:** you only look at a specific window of time (last 7 days).
+- **Aggregation:** you summarize many values into a few stats (avg/min/max).
+- **Automation:** a scheduled job runs the same steps every week.
+
+If you can build or understand this, you’re already practicing real CS thinking—just without the scary jargon.
+
 ## 1) Create the Notion database
 
 Create a new database in Notion (table view is easiest) with these properties:
@@ -48,6 +66,23 @@ Suggested cron (set Val Town timezone to EST):
 ```
 30 9 * * 2
 ```
+
+### What the cron line means
+
+Cron is a simple way to say “run this on a schedule.” It has five fields:
+
+```
+minute hour day-of-month month day-of-week
+```
+
+So `30 9 * * 2` means:
+- minute = 30
+- hour = 9
+- day-of-month = * (every day of the month)
+- month = * (every month)
+- day-of-week = 2 (Tuesday)
+
+In other words: every Tuesday at 9:30am.
 
 ## 5) Customize
 
