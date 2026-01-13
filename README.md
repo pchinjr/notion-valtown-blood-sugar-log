@@ -47,7 +47,6 @@ Create a new database in Notion (table view is easiest) with these properties:
 - **Created Time** (Created time) or **Created Time** (Text)
 - **Measurement Date** (Date) (e.g., `January 13, 2026`)
 - **Blood Sugar Level** (Number)
-- **Notes** (Text) (optional)
 
 You can name the database anything (e.g., "Blood Sugar Log").
 

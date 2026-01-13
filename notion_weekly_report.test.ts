@@ -4,6 +4,7 @@ import {
   calculateXp,
   calculateCurrentStreak,
   countEntriesByDate,
+  formatCreatedTime,
   hasPerfectWeekStreak,
   listDateRange,
   type Entry,
@@ -31,9 +32,9 @@ Deno.test("calculateCurrentStreak stops at first missing day", () => {
 
 Deno.test("countEntriesByDate aggregates by date", () => {
   const entries: Entry[] = [
-    { date: "2026-01-01", createdTime: null, value: 90, notes: null },
-    { date: "2026-01-01", createdTime: null, value: 95, notes: null },
-    { date: "2026-01-02", createdTime: null, value: 100, notes: null },
+    { date: "2026-01-01", createdTime: null, value: 90 },
+    { date: "2026-01-01", createdTime: null, value: 95 },
+    { date: "2026-01-02", createdTime: null, value: 100 },
   ];
   assertEquals(countEntriesByDate(entries), { "2026-01-01": 2, "2026-01-02": 1 });
 });
@@ -92,4 +93,14 @@ Deno.test("hasPerfectWeekStreak requires two entries per day", () => {
 Deno.test("calculateXp applies streak and healthy average bonuses", () => {
   const xp = calculateXp(14, 95, true);
   assertEquals(xp, 242);
+});
+
+Deno.test("formatCreatedTime extracts time from Notion-style string", () => {
+  const formatted = formatCreatedTime("January 13, 2026 6:33 PM");
+  assertEquals(formatted, "6:33 PM");
+});
+
+Deno.test("formatCreatedTime formats ISO timestamps", () => {
+  const formatted = formatCreatedTime("2026-01-13T18:33:00.000Z");
+  assertEquals(formatted, "6:33 PM");
 });

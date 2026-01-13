@@ -17,7 +17,6 @@ export type NotionPage = {
     "Measurement Date"?: NotionDateProperty;
     "Blood Sugar Level"?: NotionNumberProperty;
     "Created Time"?: NotionCreatedTimeProperty | NotionTextProperty;
-    "Notes"?: NotionTextProperty;
   };
 };
 
@@ -31,7 +30,6 @@ export type Entry = {
   date: string;
   createdTime: string | null;
   value: number;
-  notes: string | null;
 };
 
 export default async function handler(): Promise<Response> {
@@ -174,14 +172,13 @@ export function parseEntry(page: NotionPage): Entry | null {
 
   // "Created Time" can be a Created time field or a text property.
   const createdProp = props["Created Time"];
-  const createdTime = isCreatedTimeProperty(createdProp)
+  const createdTimeRaw = isCreatedTimeProperty(createdProp)
     ? createdProp.created_time
     : isTextProperty(createdProp)
     ? createdProp.rich_text?.[0]?.plain_text ?? null
     : null;
-  const notes = props["Notes"]?.rich_text?.[0]?.plain_text ?? null;
-
-  return { date: date.slice(0, 10), createdTime, value, notes };
+  const createdTime = formatCreatedTime(createdTimeRaw);
+  return { date: date.slice(0, 10), createdTime, value };
 }
 
 export function buildReport(entries: Entry[], start: string, end: string) {
@@ -288,6 +285,23 @@ export function calculateCurrentStreak(dateRange: string[], dateCounts: Record<s
   return streak;
 }
 
+export function formatCreatedTime(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const timeMatch = trimmed.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
+  if (timeMatch) {
+    return timeMatch[1].toUpperCase().replace(/\s+/, " ");
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return trimmed;
+  return parsed.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
+
 export function hasPerfectWeekStreak(dateRange: string[], dateCounts: Record<string, number>): boolean {
   return dateRange.length >= 7 && dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
 }
@@ -325,8 +339,7 @@ export function buildEncouragement(completionRate: number, streak: number): stri
 
 export function formatEntryLine(entry: Entry): string {
   const time = entry.createdTime ? ` (${entry.createdTime})` : "";
-  const notes = entry.notes ? ` — ${entry.notes}` : "";
-  return `${entry.date}${time}: ${entry.value}${notes}`;
+  return `${entry.date}${time}: ${entry.value}`;
 }
 
 export function renderHtmlReport(
@@ -352,9 +365,8 @@ export function renderHtmlReport(
   // Simple HTML table for quick scanning in email clients.
   const rows = entries
     .map((entry) => {
-      const notes = entry.notes ? escapeHtml(entry.notes) : "";
       const time = entry.createdTime ?? "";
-      return `<tr><td>${entry.date}</td><td>${time}</td><td>${entry.value}</td><td>${notes}</td></tr>`;
+      return `<tr><td>${entry.date}</td><td>${time}</td><td>${entry.value}</td></tr>`;
     })
     .join("");
 
@@ -381,11 +393,10 @@ export function renderHtmlReport(
             <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Date</th>
             <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Time</th>
             <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Value</th>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Notes</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="4" style="padding: 6px;">No entries</td></tr>`}
+          ${rows || `<tr><td colspan="3" style="padding: 6px;">No entries</td></tr>`}
         </tbody>
       </table>
     </div>
