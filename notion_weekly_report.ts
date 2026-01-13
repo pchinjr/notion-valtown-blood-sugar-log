@@ -97,7 +97,7 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
   };
 
   const entries: Entry[] = [];
-  let cursor: string | undefined;
+  let cursor: string | null | undefined;
 
   do {
     // Query by Measurement Date in the selected range, sorted ascending.
@@ -132,7 +132,7 @@ async function fetchEntries(start: string, end: string): Promise<Entry[]> {
       if (entry) entries.push(entry);
     }
 
-    cursor = data.has_more ? data.next_cursor : undefined;
+    cursor = data.has_more && data.next_cursor ? data.next_cursor : undefined;
   } while (cursor);
 
   return entries;

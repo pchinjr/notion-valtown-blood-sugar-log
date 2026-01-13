@@ -14,9 +14,9 @@
     ]
   },
   "lint": {
-    "include": ["deno:/https/esm.town/**/*"],
+    "include": ["**/*.ts", "**/*.tsx", "deno:/https/esm.town/**/*"],
     "rules": {
-      "exclude": ["no-explicit-any"]
+      "exclude": ["no-explicit-any", "no-import-prefix"]
     }
   },
   "node_modules_dir": false,
