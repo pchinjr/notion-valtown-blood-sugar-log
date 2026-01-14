@@ -49,3 +49,5 @@ This keeps the system simple while still scaling to many life areas.
 - Define XP/badge rule config so new trackers can reuse it
 - Add monthly and yearly rollup reports (from SQLite, not Notion)
 - Add a sample “collector” val for another Notion database (e.g., exercise)
+ - Add run_id generation strategy (UUID or deterministic) and document it
+ - Validate email layout on Gmail mobile and adjust spacing if needed
