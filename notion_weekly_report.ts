@@ -468,26 +468,61 @@ export function renderHtmlReport(
         </tr>
         <tr>
           <td style="padding: 8px 16px; background: #1f1b3a; color: #ffffff; font-size: 12px; letter-spacing: 1px;">
-            OOOO //// OOOO //// OOOO //// OOOO
+            🔺 🔷 〰️ 🟢 〰️ 🔶 〰️ 🟡 〰️ 🟣 🔺 🔵 〰️
           </td>
         </tr>
         <tr>
           <td style="padding: 16px;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 10px; background: #ff7a59; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Avg ${stats.avg}</td>
-                <td style="padding: 10px; background: #7dd3fc; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Min ${stats.min}</td>
-                <td style="padding: 10px; background: #a7f3d0; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Max ${stats.max}</td>
+                <td style="padding: 8px;">
+                  <div style="background: #ff7a59; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 14px; padding: 10px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Avg</div>
+                    <div style="font-size: 18px;">${stats.avg}</div>
+                  </div>
+                </td>
+                <td style="padding: 8px;">
+                  <div style="background: #7dd3fc; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 14px; padding: 10px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Min</div>
+                    <div style="font-size: 18px;">${stats.min}</div>
+                  </div>
+                </td>
+                <td style="padding: 8px;">
+                  <div style="background: #a7f3d0; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 14px; padding: 10px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Max</div>
+                    <div style="font-size: 18px;">${stats.max}</div>
+                  </div>
+                </td>
               </tr>
             </table>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
               <tr>
-                <td style="padding: 10px; background: #f472b6; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Entries ${stats.count}/${stats.expected}</td>
-                <td style="padding: 10px; background: #fde047; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Completion ${stats.completionRate}%</td>
+                <td style="padding: 8px;">
+                  <div style="background: #f472b6; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 999px; padding: 10px 12px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Entries</div>
+                    <div style="font-size: 16px;">${stats.count}/${stats.expected}</div>
+                  </div>
+                </td>
+                <td style="padding: 8px;">
+                  <div style="background: #fde047; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 999px; padding: 10px 12px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Completion</div>
+                    <div style="font-size: 16px;">${stats.completionRate}%</div>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td style="padding: 10px; background: #c4b5fd; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Streak ${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</td>
-                <td style="padding: 10px; background: #f9a8d4; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">XP ${stats.xp}</td>
+                <td style="padding: 8px;">
+                  <div style="background: #c4b5fd; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 22px; padding: 10px 12px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">Streak</div>
+                    <div style="font-size: 16px;">${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</div>
+                  </div>
+                </td>
+                <td style="padding: 8px;">
+                  <div style="background: #f9a8d4; color: #1f1b3a; font-weight: 800; border: 2px solid #1f1b3a; border-radius: 22px; padding: 10px 12px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;">XP</div>
+                    <div style="font-size: 16px;">${stats.xp}</div>
+                  </div>
+                </td>
               </tr>
             </table>
             <div style="margin-top: 12px; padding: 10px; background: #e2e8f0; border: 2px dashed #1f1b3a;">
