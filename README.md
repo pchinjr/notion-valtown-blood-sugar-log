@@ -3,7 +3,7 @@
 This repo contains a Val Town-ready script that:
 - queries a Notion database for the last 7 days of blood sugar entries (UTC date range)
 - computes stats, streaks, XP, and badges (expected 2 per day)
-- emails a weekly rollup to your Val Town account (free tier friendly)
+- emails a friendly weekly rollup to your Val Town account (free tier friendly)
 
 ## What this does (plain language)
 
