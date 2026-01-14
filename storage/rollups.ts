@@ -12,6 +12,7 @@ export type WeeklyRollup = {
   xp: number;
   badges: string[];
   stats: Record<string, unknown>;
+  runId: string;
 };
 
 export type BadgeEvent = {
@@ -34,8 +35,10 @@ export async function initRollupSchema() {
     xp INTEGER NOT NULL,
     badges_json TEXT NOT NULL,
     stats_json TEXT NOT NULL,
+    run_id TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    UNIQUE(category, period_start)
+    UNIQUE(category, period_start),
+    UNIQUE(run_id)
   )`);
 
   await sqlite.execute(`CREATE TABLE IF NOT EXISTS ${BADGE_EVENTS_TABLE} (
@@ -51,6 +54,11 @@ export async function initRollupSchema() {
 
 export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
   const createdAt = new Date().toISOString();
+  const existing = await sqlite.execute(
+    `SELECT id FROM ${WEEKLY_ROLLUPS_TABLE} WHERE run_id = ? LIMIT 1`,
+    [rollup.runId],
+  );
+  if (existing.rows.length) return;
   await sqlite.execute(
     `INSERT OR REPLACE INTO ${WEEKLY_ROLLUPS_TABLE} (
       category,
@@ -61,8 +69,9 @@ export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
       xp,
       badges_json,
       stats_json,
+      run_id,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       rollup.category,
       rollup.periodStart,
@@ -72,6 +81,7 @@ export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
       rollup.xp,
       JSON.stringify(rollup.badges),
       JSON.stringify(rollup.stats),
+      rollup.runId,
       createdAt,
     ],
   );
