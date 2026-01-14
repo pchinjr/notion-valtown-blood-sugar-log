@@ -205,6 +205,7 @@ export function buildReport(entries: Entry[], start: string, end: string) {
   const xp = calculateXp(count, avg, perfectWeekStreak);
 
   const subject = `Blood Sugar Weekly Rollup (${start} → ${end})`;
+  const groupedEntries = groupEntriesByDate(entries, dateRange);
 
   const lines = [
     `Range: ${start} to ${end}`,
@@ -221,11 +222,11 @@ export function buildReport(entries: Entry[], start: string, end: string) {
     `Disclaimer: ${disclaimer}`,
     "",
     "Entries:",
-    ...entries.map(formatEntryLine),
+    ...groupedEntries.map(formatGroupedEntryLine),
   ];
 
   const text = lines.join("\n");
-  const html = renderHtmlReport(entries, {
+  const html = renderHtmlReport(groupedEntries, {
     start,
     end,
     count,
@@ -302,6 +303,13 @@ export function formatCreatedTime(value: string | null): string | null {
   });
 }
 
+function getMeridiem(value: string | null): "AM" | "PM" | null {
+  if (!value) return null;
+  const match = value.match(/\b(AM|PM)\b/i);
+  if (!match) return null;
+  return match[1].toUpperCase() as "AM" | "PM";
+}
+
 export function hasPerfectWeekStreak(dateRange: string[], dateCounts: Record<string, number>): boolean {
   return dateRange.length >= 7 && dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
 }
@@ -337,13 +345,88 @@ export function buildEncouragement(completionRate: number, streak: number): stri
   return "Every entry helps — you’ve got this.";
 }
 
-export function formatEntryLine(entry: Entry): string {
-  const time = entry.createdTime ? ` (${entry.createdTime})` : "";
-  return `${entry.date}${time}: ${entry.value}`;
+type GroupedEntries = {
+  date: string;
+  am: Entry[];
+  pm: Entry[];
+};
+
+export function groupEntriesByDate(entries: Entry[], dateRange: string[]): GroupedEntries[] {
+  const buckets: Record<string, { am: Entry[]; pm: Entry[] }> = {};
+  for (const date of dateRange) {
+    buckets[date] = { am: [], pm: [] };
+  }
+  for (const entry of entries) {
+    if (!buckets[entry.date]) {
+      buckets[entry.date] = { am: [], pm: [] };
+    }
+    const meridiem = getMeridiem(entry.createdTime);
+    if (meridiem === "AM") {
+      buckets[entry.date].am.push(entry);
+    } else if (meridiem === "PM") {
+      buckets[entry.date].pm.push(entry);
+    } else {
+      buckets[entry.date].pm.push(entry);
+    }
+  }
+  return dateRange.map((date) => ({
+    date,
+    am: buckets[date]?.am ?? [],
+    pm: buckets[date]?.pm ?? [],
+  }));
+}
+
+export function formatGroupedEntryLine(group: GroupedEntries): string {
+  const [first, second] = formatFirstSecondText(group);
+  return `${group.date} | 1st: ${first} | 2nd: ${second}`;
+}
+
+function formatFirstSecondText(group: GroupedEntries): [string, string] {
+  const ordered = orderEntries(group);
+  if (!ordered.length) return ["—", "—"];
+  const first = String(ordered[0].value);
+  if (ordered.length === 1) return [first, "—"];
+  const secondValue = String(ordered[1].value);
+  const overflow = ordered.length > 2 ? ` (+${ordered.length - 2})` : "";
+  return [first, `${secondValue}${overflow}`];
+}
+
+function formatFirstSecondHtml(group: GroupedEntries): [string, string] {
+  const ordered = orderEntries(group);
+  if (!ordered.length) return ["—", "—"];
+  const first = String(ordered[0].value);
+  if (ordered.length === 1) return [first, "—"];
+  const secondValue = String(ordered[1].value);
+  const overflow = ordered.length > 2 ? ` (+${ordered.length - 2})` : "";
+  return [first, `${secondValue}${overflow}`];
+}
+
+function orderEntries(group: GroupedEntries): Entry[] {
+  const combined = [...group.am, ...group.pm];
+  return combined.sort((a, b) => {
+    const aMinutes = parseTimeToMinutes(a.createdTime);
+    const bMinutes = parseTimeToMinutes(b.createdTime);
+    if (aMinutes === null && bMinutes === null) return 0;
+    if (aMinutes === null) return 1;
+    if (bMinutes === null) return -1;
+    return aMinutes - bMinutes;
+  });
+}
+
+function parseTimeToMinutes(value: string | null): number | null {
+  if (!value) return null;
+  const match = value.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3].toUpperCase();
+  if (meridiem === "PM" && hours < 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  return hours * 60 + minutes;
 }
 
 export function renderHtmlReport(
-  entries: Entry[],
+  groupedEntries: GroupedEntries[],
   stats: {
     start: string;
     end: string;
@@ -363,41 +446,97 @@ export function renderHtmlReport(
   },
 ): string {
   // Simple HTML table for quick scanning in email clients.
-  const rows = entries
-    .map((entry) => {
-      const time = entry.createdTime ?? "";
-      return `<tr><td>${entry.date}</td><td>${time}</td><td>${entry.value}</td></tr>`;
+  const rows = groupedEntries
+    .map((group) => {
+      const [first, second] = formatFirstSecondHtml(group);
+      return `<tr>
+        <td style="padding: 6px; border-bottom: 1px solid #1f1b3a; font-size: 12px; word-break: break-word;">${group.date}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #1f1b3a; font-size: 12px; word-break: break-word;">${escapeHtml(first)}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #1f1b3a; font-size: 12px; word-break: break-word;">${escapeHtml(second)}</td>
+      </tr>`;
     })
     .join("");
 
   return `
-    <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5;">
-      <h2>Blood Sugar Weekly Rollup</h2>
-      <p><strong>Range:</strong> ${stats.start} → ${stats.end}</p>
-      <ul>
-        <li><strong>Entries:</strong> ${stats.count} (expected ${stats.expected}, missing ${stats.missing})</li>
-        <li><strong>Average:</strong> ${stats.avg}</li>
-        <li><strong>Min:</strong> ${stats.min}</li>
-        <li><strong>Max:</strong> ${stats.max}</li>
-        <li><strong>Completion:</strong> ${stats.completionRate}%</li>
-        <li><strong>Current streak:</strong> ${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</li>
-        <li><strong>Perfect week streak:</strong> ${stats.perfectWeekStreak ? "Yes" : "No"}</li>
-        <li><strong>XP earned:</strong> ${stats.xp}</li>
-        <li><strong>Badges:</strong> ${stats.badges.length ? stats.badges.join(", ") : "No badges yet"}</li>
-        <li><strong>Encouragement:</strong> ${escapeHtml(stats.encouragement)}</li>
-        <li><strong>Disclaimer:</strong> ${escapeHtml(stats.disclaimer)}</li>
-      </ul>
-      <table style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Date</th>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Time</th>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 6px;">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || `<tr><td colspan="3" style="padding: 6px;">No entries</td></tr>`}
-        </tbody>
+    <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.4; background: #f7f5ff; padding: 16px;">
+      <table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 3px solid #1f1b3a; table-layout: fixed;">
+        <tr>
+          <td style="padding: 14px 16px; background: #ffdf3b; border-bottom: 3px solid #1f1b3a;">
+            <div style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px;">Blood Sugar Weekly Rollup</div>
+            <div style="font-size: 12px; margin-top: 4px;">${stats.start} to ${stats.end}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 16px; background: #1f1b3a; color: #ffffff; font-size: 12px; letter-spacing: 1px;">
+            OOOO //// OOOO //// OOOO //// OOOO
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 16px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; background: #ff7a59; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Avg ${stats.avg}</td>
+                <td style="padding: 10px; background: #7dd3fc; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Min ${stats.min}</td>
+                <td style="padding: 10px; background: #a7f3d0; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Max ${stats.max}</td>
+              </tr>
+            </table>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+              <tr>
+                <td style="padding: 10px; background: #f472b6; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Entries ${stats.count}/${stats.expected}</td>
+                <td style="padding: 10px; background: #fde047; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Completion ${stats.completionRate}%</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; background: #c4b5fd; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">Streak ${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}</td>
+                <td style="padding: 10px; background: #f9a8d4; color: #1f1b3a; font-weight: 700; border: 2px solid #1f1b3a;">XP ${stats.xp}</td>
+              </tr>
+            </table>
+            <div style="margin-top: 12px; padding: 10px; background: #e2e8f0; border: 2px dashed #1f1b3a;">
+              <strong>Perfect Week Streak:</strong> ${stats.perfectWeekStreak ? "Yes" : "No"}
+            </div>
+            <div style="margin-top: 10px;">
+              <strong>Badges:</strong>
+              <div style="margin-top: 6px;">
+                ${
+                  stats.badges.length
+                    ? stats.badges
+                        .map(
+                          (badge) =>
+                            `<span style="display: inline-block; margin: 4px 6px 0 0; padding: 6px 8px; background: #ffffff; border: 2px solid #1f1b3a; font-weight: 700;">${escapeHtml(badge)}</span>`,
+                        )
+                        .join("")
+                    : `<span style="display: inline-block; margin-top: 4px;">No badges yet</span>`
+                }
+              </div>
+            </div>
+            <div style="margin-top: 12px; padding: 10px; background: #1f1b3a; color: #ffffff;">
+              ${escapeHtml(stats.encouragement)}
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #444444;">
+              ${escapeHtml(stats.disclaimer)}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 12px 16px; background: #1f1b3a; color: #ffffff; font-weight: 700;">
+            Entries
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 16px 16px 16px;">
+            <table style="border-collapse: collapse; width: 100%; border: 2px solid #1f1b3a; table-layout: fixed;">
+              <thead>
+                <tr style="background: #ffdf3b;">
+                  <th style="text-align: left; border-bottom: 2px solid #1f1b3a; padding: 6px; font-size: 12px;">Date</th>
+                  <th style="text-align: left; border-bottom: 2px solid #1f1b3a; padding: 6px; font-size: 12px;">1st</th>
+                  <th style="text-align: left; border-bottom: 2px solid #1f1b3a; padding: 6px; font-size: 12px;">2nd</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows || `<tr><td colspan="3" style="padding: 8px; font-size: 12px;">No entries</td></tr>`}
+              </tbody>
+            </table>
+          </td>
+        </tr>
       </table>
     </div>
   `;

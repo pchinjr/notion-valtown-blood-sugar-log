@@ -5,6 +5,8 @@ import {
   calculateCurrentStreak,
   countEntriesByDate,
   formatCreatedTime,
+  formatGroupedEntryLine,
+  groupEntriesByDate,
   hasPerfectWeekStreak,
   listDateRange,
   type Entry,
@@ -103,4 +105,14 @@ Deno.test("formatCreatedTime extracts time from Notion-style string", () => {
 Deno.test("formatCreatedTime formats ISO timestamps", () => {
   const formatted = formatCreatedTime("2026-01-13T18:33:00.000Z");
   assertEquals(formatted, "6:33 PM");
+});
+
+Deno.test("formatGroupedEntryLine orders entries by time", () => {
+  const entries: Entry[] = [
+    { date: "2026-01-01", createdTime: "6:30 PM", value: 110 },
+    { date: "2026-01-01", createdTime: "6:30 AM", value: 90 },
+  ];
+  const grouped = groupEntriesByDate(entries, ["2026-01-01"]);
+  const line = formatGroupedEntryLine(grouped[0]);
+  assertEquals(line, "2026-01-01 | 1st: 90 | 2nd: 110");
 });
