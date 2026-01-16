@@ -1,6 +1,7 @@
 import {
   buildBadges,
   buildEncouragement,
+  buildBloodSugarRollup,
   calculateXp,
   formatCreatedTime,
   formatGroupedEntryLine,
@@ -95,6 +96,28 @@ Deno.test("calculateXp applies streak and healthy average bonuses", () => {
   assertEquals(xp, 242);
 });
 
+// Boundary check: average at threshold should not get the healthy bonus.
+Deno.test("calculateXp does not apply healthy bonus at threshold", () => {
+  const xp = calculateXp(10, 100, true);
+  assertEquals(xp, 144);
+});
+
+// Ensure minimum thresholds gate badges.
+Deno.test("buildBadges respects minimum thresholds", () => {
+  const range = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05", "2026-01-06", "2026-01-07"];
+  const counts = Object.fromEntries(range.map((date) => [date, 2]));
+  const badges = buildBadges(range, counts, 6, 110, false);
+  assertEquals(badges.includes("Mandy-Mode Consistency"), false);
+  assertEquals(badges.includes("Cage Match: Double-Check Champion"), false);
+});
+
+// Perfect week requires 2+ entries every day in a 7-day window.
+Deno.test("hasPerfectWeekStreak returns true for full week", () => {
+  const range = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05", "2026-01-06", "2026-01-07"];
+  const counts = Object.fromEntries(range.map((date) => [date, 2]));
+  assertEquals(hasPerfectWeekStreak(range, counts), true);
+});
+
 Deno.test("formatCreatedTime extracts time from Notion-style string", () => {
   const formatted = formatCreatedTime("January 13, 2026 6:33 PM");
   assertEquals(formatted, "6:33 PM");
@@ -113,4 +136,16 @@ Deno.test("formatGroupedEntryLine orders entries by time", () => {
   const grouped = groupEntriesByDate(entries, ["2026-01-01"]);
   const line = formatGroupedEntryLine(grouped[0]);
   assertEquals(line, "2026-01-01 | 1st: 90 | 2nd: 110");
+});
+
+Deno.test("buildBloodSugarRollup uses deterministic runId and stats", () => {
+  const entries: Entry[] = [
+    { date: "2026-01-01", createdTime: "7:00 AM", value: 90 },
+    { date: "2026-01-01", createdTime: "7:00 PM", value: 100 },
+  ];
+  const rollup = buildBloodSugarRollup(entries, "2026-01-01", "2026-01-07");
+  assertEquals(rollup.category, "blood_sugar");
+  assertEquals(rollup.runId, "blood_sugar-2026-01-01-2026-01-07");
+  assertEquals(rollup.stats.totalEntries, 2);
+  assertEquals(rollup.stats.entriesByDate["2026-01-01"], 2);
 });

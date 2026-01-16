@@ -1,3 +1,4 @@
+import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./date.ts";
 import {
   type NotionCreatedTimeProperty,
   type NotionDateProperty,
@@ -23,6 +24,26 @@ export type Entry = {
   date: string;
   createdTime: string | null;
   value: number;
+};
+
+export type BloodSugarRollup = {
+  category: string;
+  periodStart: string;
+  periodEnd: string;
+  streak: number;
+  completionRate: number;
+  xp: number;
+  badges: string[];
+  stats: {
+    totalEntries: number;
+    avg: number;
+    min: number;
+    max: number;
+    entriesByDate: Record<string, number>;
+    expected: number;
+    missing: number;
+  };
+  runId: string;
 };
 
 export type GroupedEntries = {
@@ -75,6 +96,44 @@ export function calculateXp(totalCount: number, avg: number, perfectWeekStreak: 
   const streakBonus = perfectWeekStreak ? STREAK_BONUS_MULTIPLIER : 1;
   const healthyAvgBonus = avg > 0 && avg < HEALTHY_AVG_THRESHOLD ? HEALTHY_AVG_BONUS_MULTIPLIER : 1;
   return Math.round(baseXp * streakBonus * healthyAvgBonus);
+}
+
+export function buildBloodSugarRollup(entries: Entry[], start: string, end: string): BloodSugarRollup {
+  const values = entries.map((entry) => entry.value);
+  const count = values.length;
+  const avg = count ? Math.round((values.reduce((a, b) => a + b, 0) / count) * 10) / 10 : 0;
+  const min = count ? Math.min(...values) : 0;
+  const max = count ? Math.max(...values) : 0;
+
+  const dateCounts = countEntriesByDate(entries);
+  const dateRange = listDateRange(start, end);
+  const expected = dateRange.length * 2;
+  const missing = Math.max(0, expected - count);
+  const completionRate = expected ? Math.round((count / expected) * 100) : 0;
+  const currentStreak = calculateCurrentStreak(dateRange, dateCounts);
+  const perfectWeekStreak = hasPerfectWeekStreak(dateRange, dateCounts);
+  const badges = buildBadges(dateRange, dateCounts, count, avg, perfectWeekStreak);
+  const xp = calculateXp(count, avg, perfectWeekStreak);
+
+  return {
+    category: "blood_sugar",
+    periodStart: start,
+    periodEnd: end,
+    streak: currentStreak,
+    completionRate,
+    xp,
+    badges,
+    stats: {
+      totalEntries: count,
+      avg,
+      min,
+      max,
+      entriesByDate: dateCounts,
+      expected,
+      missing,
+    },
+    runId: `blood_sugar-${start}-${end}`,
+  };
 }
 
 export function buildBadges(

@@ -143,6 +143,7 @@ Deno.test("roundNumber rounds to two decimals", () => {
   assertEquals(roundNumber(3.14159), 3.14);
 });
 
+// Rollup should aggregate entries and use deterministic runId.
 Deno.test("buildFoodRollup aggregates weekly stats", () => {
   const entries: Entry[] = [
     {

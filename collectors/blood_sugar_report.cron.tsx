@@ -1,14 +1,12 @@
 import { email } from "https://esm.town/v/std/email";
-import { calculateCurrentStreak, countEntriesByDate, daysBetweenInclusive, getWeeklyRange, listDateRange } from "../shared/date.ts";
+import { getWeeklyRange, listDateRange } from "../shared/date.ts";
 import { fetchNotionPages } from "../shared/notion.ts";
 import { initRollupSchema, upsertWeeklyRollup } from "../storage/rollups.ts";
 import {
-  buildBadges,
   buildEncouragement,
-  calculateXp,
+  buildBloodSugarRollup,
   formatGroupedEntryLine,
   groupEntriesByDate,
-  hasPerfectWeekStreak,
   parseEntry,
   type GroupedEntries,
   type BloodSugarNotionPage,
@@ -111,41 +109,25 @@ export async function fetchEntries(
 export function buildReport(entries: Entry[], start: string, end: string) {
   // Compute summary stats and derive copy for email-friendly output.
   // Summary stats for the weekly rollup.
-  const values = entries.map((entry) => entry.value);
-  const count = values.length;
-  const avg = count ? Math.round((values.reduce((a, b) => a + b, 0) / count) * 10) / 10 : 0;
-  const min = count ? Math.min(...values) : 0;
-  const max = count ? Math.max(...values) : 0;
-
-  // Expect 2 entries per day unless you decide otherwise.
-  const days = daysBetweenInclusive(start, end);
-  const expected = days * 2;
-  const missing = Math.max(0, expected - count);
-  const dateCounts = countEntriesByDate(entries);
+  const rollup = buildBloodSugarRollup(entries, start, end);
+  const subject = `Blood Sugar Weekly Rollup (${start} → ${end})`;
   const dateRange = listDateRange(start, end);
-  const currentStreak = calculateCurrentStreak(dateRange, dateCounts);
-  const perfectWeekStreak = hasPerfectWeekStreak(dateRange, dateCounts);
-  const completionRate = expected ? Math.round((count / expected) * 100) : 0;
-  const badges = buildBadges(dateRange, dateCounts, count, avg, perfectWeekStreak);
-  const encouragement = buildEncouragement(completionRate, currentStreak);
+  const groupedEntries = groupEntriesByDate(entries, dateRange);
+  const encouragement = buildEncouragement(rollup.completionRate, rollup.streak);
   const disclaimer =
     "Not medical advice. Educational info only. Source: https://www.ynhhs.org/articles/what-is-healthy-blood-sugar";
-  const xp = calculateXp(count, avg, perfectWeekStreak);
-
-  const subject = `Blood Sugar Weekly Rollup (${start} → ${end})`;
-  const groupedEntries = groupEntriesByDate(entries, dateRange);
 
   const lines = [
     `Range: ${start} to ${end}`,
-    `Entries: ${count} (expected ${expected}, missing ${missing})`,
-    `Average: ${avg}`,
-    `Min: ${min}`,
-    `Max: ${max}`,
-    `Completion: ${completionRate}%`,
-    `Current streak: ${currentStreak} day${currentStreak === 1 ? "" : "s"}`,
-    `Perfect week streak: ${perfectWeekStreak ? "Yes" : "No"}`,
-    `XP earned: ${xp}`,
-    `Badges: ${badges.length ? badges.join(", ") : "No badges yet"}`,
+    `Entries: ${rollup.stats.totalEntries} (expected ${rollup.stats.expected}, missing ${rollup.stats.missing})`,
+    `Average: ${rollup.stats.avg}`,
+    `Min: ${rollup.stats.min}`,
+    `Max: ${rollup.stats.max}`,
+    `Completion: ${rollup.completionRate}%`,
+    `Current streak: ${rollup.streak} day${rollup.streak === 1 ? "" : "s"}`,
+    `Perfect week streak: ${hasPerfectWeekStreak(dateRange, rollup.stats.entriesByDate) ? "Yes" : "No"}`,
+    `XP earned: ${rollup.xp}`,
+    `Badges: ${rollup.badges.length ? rollup.badges.join(", ") : "No badges yet"}`,
     `Encouragement: ${encouragement}`,
     `Disclaimer: ${disclaimer}`,
     "",
@@ -157,40 +139,20 @@ export function buildReport(entries: Entry[], start: string, end: string) {
   const html = renderHtmlReport(groupedEntries, {
     start,
     end,
-    count,
-    expected,
-    missing,
-    avg,
-    min,
-    max,
-    completionRate,
-    currentStreak,
-    badges,
+    count: rollup.stats.totalEntries,
+    expected: rollup.stats.expected,
+    missing: rollup.stats.missing,
+    avg: rollup.stats.avg,
+    min: rollup.stats.min,
+    max: rollup.stats.max,
+    completionRate: rollup.completionRate,
+    currentStreak: rollup.streak,
+    badges: rollup.badges,
     encouragement,
     disclaimer,
-    xp,
-    perfectWeekStreak,
+    xp: rollup.xp,
+    perfectWeekStreak: hasPerfectWeekStreak(dateRange, rollup.stats.entriesByDate),
   });
-
-  const rollup = {
-    category: "blood_sugar",
-    periodStart: start,
-    periodEnd: end,
-    streak: currentStreak,
-    completionRate,
-    xp,
-    badges,
-    stats: {
-      totalEntries: count,
-      avg,
-      min,
-      max,
-      entriesByDate: dateCounts,
-      expected,
-      missing,
-    },
-    runId: `blood_sugar-${start}-${end}`,
-  };
 
   return { subject, text, html, rollup };
 }

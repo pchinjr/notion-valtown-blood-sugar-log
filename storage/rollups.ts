@@ -55,7 +55,13 @@ export async function initRollupSchema() {
 export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
   const createdAt = new Date().toISOString();
   await sqlite.execute(
-    `INSERT OR REPLACE INTO ${WEEKLY_ROLLUPS_TABLE} (
+    buildUpsertWeeklyRollupQuery(rollup, createdAt),
+  );
+}
+
+export function buildUpsertWeeklyRollupQuery(rollup: WeeklyRollup, createdAt: string) {
+  return {
+    sql: `INSERT OR REPLACE INTO ${WEEKLY_ROLLUPS_TABLE} (
       category,
       period_start,
       period_end,
@@ -67,7 +73,7 @@ export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
       run_id,
       created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
+    args: [
       rollup.category,
       rollup.periodStart,
       rollup.periodEnd,
@@ -79,7 +85,7 @@ export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
       rollup.runId,
       createdAt,
     ],
-  );
+  };
 }
 
 export async function insertBadgeEvents(events: BadgeEvent[]) {
