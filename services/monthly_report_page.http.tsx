@@ -1,6 +1,6 @@
 import React from "https://esm.sh/react@18.2.0";
 import { renderToString } from "https://esm.sh/react-dom@18.2.0/server";
-import { sqlite } from "https://esm.town/v/std/sqlite";
+import { sqlite } from "https://esm.town/v/stevekrouse/sqlite";
 import {
   aggregateBloodSugarMonth,
   aggregateFoodMonth,
@@ -10,8 +10,13 @@ import {
 
 export default async function (req: Request) {
   const url = new URL(req.url);
-  const { start, end } = resolveMonthRange(url.searchParams.get("month"));
+  const monthParam = url.searchParams.get("month");
+  const now = new Date();
+  const startYear = 2026;
+  const selectedMonth = resolveSelectedMonth(monthParam, now, startYear);
+  const { start, end } = resolveMonthRange(selectedMonth, now);
   const includePartialWeeks = url.searchParams.get("partial") === "true";
+  const monthOptions = buildMonthOptions(startYear, now);
 
   const rollups = await fetchRollups(start, end, includePartialWeeks);
   const bloodSugar = aggregateBloodSugarMonth(rollups.filter((r) => r.category === "blood_sugar"), start, end, {
@@ -26,6 +31,8 @@ export default async function (req: Request) {
       monthStart={start}
       monthEnd={end}
       includePartialWeeks={includePartialWeeks}
+      selectedMonth={selectedMonth}
+      monthOptions={monthOptions}
       bloodSugar={bloodSugar}
       food={food}
     />,
@@ -61,13 +68,22 @@ async function fetchRollups(start: string, end: string, includePartialWeeks: boo
     args,
   });
 
-  return result.rows.map((row) =>
-    rowToRollup(row as unknown[]),
-  );
+  return result.rows.map((row) => rowToRollup(row as Record<string, unknown> | unknown[]));
 }
 
 // Convert SQLite row arrays into typed rollup objects.
-function rowToRollup(row: unknown[]): Rollup {
+function rowToRollup(row: Record<string, unknown> | unknown[]): Rollup {
+  const values = Array.isArray(row) ? row : [
+    row.category,
+    row.period_start,
+    row.period_end,
+    row.streak,
+    row.completion_rate,
+    row.xp,
+    row.badges_json,
+    row.stats_json,
+    row.run_id,
+  ];
   const [
     category,
     periodStart,
@@ -78,7 +94,7 @@ function rowToRollup(row: unknown[]): Rollup {
     badgesJson,
     statsJson,
     runId,
-  ] = row;
+  ] = values;
   return {
     category: String(category),
     periodStart: String(periodStart),
@@ -116,10 +132,12 @@ function ReportPage(props: {
   monthStart: string;
   monthEnd: string;
   includePartialWeeks: boolean;
+  selectedMonth: string;
+  monthOptions: string[];
   bloodSugar: ReturnType<typeof aggregateBloodSugarMonth>;
   food: ReturnType<typeof aggregateFoodMonth>;
 }) {
-  const { monthStart, monthEnd, includePartialWeeks, bloodSugar, food } = props;
+  const { monthStart, monthEnd, includePartialWeeks, selectedMonth, monthOptions, bloodSugar, food } = props;
   const title = "Praise Cage Monthly Rollup";
   return (
     <html lang="en">
@@ -169,6 +187,34 @@ function ReportPage(props: {
             gap: 16px;
             margin-top: 20px;
           }
+          .controls {
+            margin-top: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 700;
+          }
+          .controls label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .controls select,
+          .controls input[type="checkbox"],
+          .controls button {
+            font-family: inherit;
+            font-size: 14px;
+            border: 2px solid var(--ink);
+            padding: 4px 8px;
+            background: white;
+          }
+          .controls button {
+            background: var(--mint);
+            box-shadow: 2px 2px 0 var(--ink);
+            cursor: pointer;
+          }
           .card {
             background: white;
             border: 2px solid var(--ink);
@@ -215,6 +261,28 @@ function ReportPage(props: {
             <div className="sub">
               Range: {monthStart} → {monthEnd} {includePartialWeeks ? "(partial weeks included)" : "(full weeks only)"}
             </div>
+            <form className="controls" method="get" id="report-controls">
+              <label>
+                Month
+                <select name="month" defaultValue={selectedMonth} id="month-select">
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  name="partial"
+                  value="true"
+                  defaultChecked={includePartialWeeks}
+                  id="partial-weeks"
+                />
+                Include partial weeks
+              </label>
+            </form>
           </header>
 
           <div className="grid">
@@ -262,6 +330,26 @@ function ReportPage(props: {
             Praise Cage mode: keep logging, keep winning. Data from weekly rollups stored in Val Town SQLite.
           </div>
         </div>
+        <script>{`
+          (function () {
+            var form = document.getElementById("report-controls");
+            if (!form) return;
+            var submitForm = function () {
+              if (typeof form.requestSubmit === "function") {
+                form.requestSubmit();
+              } else {
+                form.submit();
+              }
+            };
+            form.addEventListener("change", function (event) {
+              var target = event.target;
+              if (!target) return;
+              if (target.id === "month-select" || target.id === "partial-weeks") {
+                submitForm();
+              }
+            });
+          })();
+        `}</script>
       </body>
     </html>
   );
@@ -274,4 +362,39 @@ function Stat(props: { label: string; value: string | number }) {
       <span>{props.value}</span>
     </div>
   );
+}
+
+function buildMonthOptions(startYear: number, now: Date): string[] {
+  const options: string[] = [];
+  const start = new Date(Date.UTC(startYear, 0, 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  if (end < start) {
+    return [formatMonth(start)];
+  }
+  for (let cursor = start; cursor <= end; cursor = addMonths(cursor, 1)) {
+    options.push(formatMonth(cursor));
+  }
+  return options;
+}
+
+function resolveSelectedMonth(monthParam: string | null, now: Date, startYear: number): string {
+  const minMonth = `${startYear}-01`;
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    return monthParam < minMonth ? minMonth : monthParam;
+  }
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const previous = new Date(Date.UTC(year, month - 1, 1));
+  const fallback = formatMonth(previous);
+  return fallback < minMonth ? minMonth : fallback;
+}
+
+function formatMonth(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function addMonths(date: Date, amount: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + amount, 1));
 }

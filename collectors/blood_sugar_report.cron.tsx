@@ -11,6 +11,7 @@ import {
   type GroupedEntries,
   type BloodSugarNotionPage,
   type Entry,
+  hasPerfectWeekStreak,
 } from "../shared/blood_sugar_logic.ts";
 
 export default async function handler(): Promise<Response> {
