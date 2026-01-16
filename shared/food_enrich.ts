@@ -63,6 +63,7 @@ export function extractFoodName(
     | NotionTextProperty
     | undefined,
 ): string | null {
+  // Normalize Notion title/rich_text into a single plain string.
   if (!prop) return null;
   if ("title" in prop) {
     const value = prop.title?.map((item) => item.plain_text).join("").trim();
@@ -97,6 +98,7 @@ export function shouldEnrich(entry: Entry): boolean {
 }
 
 export function buildNutritionProperties(macros: Partial<Record<MacroKey, number>>): Record<string, unknown> {
+  // Shape Notion property updates for numeric columns only.
   const props: Record<string, unknown> = {};
   if (macros.calories !== undefined) props[PROPERTY_NAMES.macros.calories] = { number: macros.calories };
   if (macros.protein !== undefined) props[PROPERTY_NAMES.macros.protein] = { number: macros.protein };
@@ -117,6 +119,7 @@ export function buildNutritionPrompt(food: string): string {
 }
 
 export function safeParseJson(value: string): unknown {
+  // Guard against non-JSON responses from the model.
   try {
     return JSON.parse(value);
   } catch {

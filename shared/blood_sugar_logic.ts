@@ -32,6 +32,7 @@ export type GroupedEntries = {
 };
 
 export function parseEntry(page: BloodSugarNotionPage): Entry | null {
+  // Normalize a Notion page into the minimal shape used by the report.
   const props = page.properties ?? {};
   const date = props["Measurement Date"]?.date?.start ?? null;
   const value = props["Blood Sugar Level"]?.number ?? null;
@@ -100,6 +101,7 @@ export function buildEncouragement(completionRate: number, streak: number): stri
 }
 
 export function groupEntriesByDate(entries: Entry[], dateRange: string[]): GroupedEntries[] {
+  // Bucket entries by date and AM/PM for consistent report formatting.
   const buckets: Record<string, { am: Entry[]; pm: Entry[] }> = {};
   for (const date of dateRange) {
     buckets[date] = { am: [], pm: [] };

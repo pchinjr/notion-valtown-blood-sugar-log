@@ -19,6 +19,7 @@ type NotionConfig = {
 };
 
 export default async function () {
+  // Resolve configs and hydrate external clients first to fail fast.
   const notionConfig = getNotionConfig();
   if (!notionConfig) {
     return new Response("Missing Notion secrets.", { status: 500 });
@@ -31,6 +32,7 @@ export default async function () {
 
   let enriched = 0;
   for (const entry of entries) {
+    // Only enrich entries missing core macros to avoid overwriting manual edits.
     if (!shouldEnrich(entry)) continue;
     if (!entry.food || entry.food === "Unknown") continue;
     const enrichment = await fetchNutrition(entry.food, openai);
@@ -62,6 +64,7 @@ function getNotionConfig(): NotionConfig | null {
 }
 
 async function fetchEntries(start: string, end: string, config: NotionConfig): Promise<Entry[]> {
+  // Pull just the last-week window to keep the Notion query fast.
   const pages = await fetchNotionPages<NotionPage>(config.databaseId, config.token, (cursor) => ({
       filter: {
         and: [
@@ -88,6 +91,7 @@ async function fetchNutrition(
 ): Promise<{
   macros: Partial<Record<MacroKey, number>>;
 } | null> {
+  // Ask the model for a strict JSON payload and coerce to numeric fields.
   const prompt = buildNutritionPrompt(foodName);
 
   const completion = await openai.chat.completions.create({

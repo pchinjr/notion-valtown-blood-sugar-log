@@ -1,17 +1,17 @@
-# Notion Blood Sugar Weekly Rollup (Val Town)
+# Notion Life Tracker (Val Town)
 
-This repo contains a Val Town-ready script that:
-- queries a Notion database for the last 7 days of blood sugar entries (UTC date range)
-- computes stats, streaks, XP, and badges (expected 2 per day)
-- emails a friendly weekly rollup to your Val Town account (free tier friendly)
+This repo contains Val Town-ready scripts that:
+- fetch Notion entries for the last 7 days (UTC)
+- send a weekly blood sugar rollup via email
+- enrich food log entries with estimated macros and write them back to Notion
 
 ## What this does (plain language)
 
-Think of this as a simple weekly helper:
+Think of this as two simple helpers:
 - You write down blood sugar readings in Notion.
-- Once a week, the script looks at the last 7 days of entries.
-- It adds up your numbers to give you a quick summary.
-- Then it emails that summary to you automatically.
+- Once a week, the script looks at the last 7 days and emails you a summary.
+- You write down foods you ate in another Notion database.
+- The food script estimates macros and fills them in.
 
 ## A tiny bit of computer science (friendly version)
 
@@ -39,7 +39,9 @@ This report is for informational purposes only and is not medical advice.
 Healthy blood sugar ranges referenced here come from:
 https://www.ynhhs.org/articles/what-is-healthy-blood-sugar
 
-## 1) Create the Notion database
+## 1) Create the Notion databases
+
+### Blood Sugar Log
 
 Create a new database in Notion (table view is easiest) with these properties:
 
@@ -50,27 +52,67 @@ Create a new database in Notion (table view is easiest) with these properties:
 
 You can name the database anything (e.g., "Blood Sugar Log").
 
+### Food Log (Macro Enrichment)
+
+Create another Notion database with these properties (exact names expected):
+
+- `food` (Title or Text)
+- `Created time` (Created time)
+- `calories` (Number)
+- `protein` (Number)
+- `carbs` (Number)
+- `fats` (Number)
+- `fiber` (Number)
+- `sugar` (Number)
+- `sodium` (Number)
+
+Only `food` and `Created time` are required for reading. The rest are written by the val.
+
 ## 2) Create a Notion integration
 
 1. Go to https://www.notion.so/my-integrations and create a new integration.
 2. Copy the **Internal Integration Token**.
 3. Open your database in Notion, click **Share**, and invite the integration.
 
-### Database ID
-Open the database in the browser and copy the 32‑character ID in the URL.
+### Database IDs
+Open each database in the browser and copy the 32‑character ID in the URL.
 
-## 3) Configure Val Town
+## 3) Configure Val Town (CLI)
 
-Create a new Val in Val Town and paste `collectors/blood_sugar_report.cron.tsx`.
+Create new Vals with the `vt` CLI, then sync from this repo:
 
-Add these secrets in Val Town (Settings → Secrets):
+```
+vt create blood_sugar_report
+vt create food_report
+```
+
+Replace each generated Val file with the corresponding script from this repo:
+- `collectors/blood_sugar_report.cron.tsx`
+- `collectors/food_report.cron.tsx`
+
+Then push each Val:
+
+```
+vt push
+```
+
+### Secrets
+
+Shared:
 - `NOTION_TOKEN`
+
+Blood sugar val:
 - `NOTION_BLOOD_SUGAR_DB_ID`
 - `REPORT_FROM_EMAIL` (optional, must be `your_username.valname@valtown.email`)
 - `REPORT_FROM_NAME` (optional)
 - `REPORT_REPLY_TO` (optional)
- 
-Free tier note: this val emails the account owner by default.
+
+Food log val:
+- `NOTION_FOOD_DB_ID`
+
+Free tier note: the blood sugar val emails the account owner by default.
+
+The food val uses Val Town's `std/openai` proxy with `gpt-5-nano`, so no OpenAI API key is required.
 
 ## 4) Schedule the report
 
@@ -103,24 +145,16 @@ In other words: every Tuesday at 9:30am.
 - Adjust the stats, date range, or email formatting in `collectors/blood_sugar_report.cron.tsx`.
 - If you prefer different property names, update them in the script.
 
-## Food Log Enrichment (OpenAI)
+## Development
 
-This repo also includes a food log enricher that reads your Notion food entries, estimates macros with OpenAI, and writes them back to the same database.
+Run tests:
+```
+deno test --allow-import --reporter=dot
+```
 
-### Notion database properties
-
-- `food` (Title or Text)
-- `Created time` (Created time)
-- `calories`, `protein`, `carbs`, `fats`, `fiber`, `sugar`, `sodium` (Number)
-
-### Val Town setup
-
-Create a new Val and paste `collectors/food_report.cron.tsx`.
-
-Add these secrets in Val Town:
-- `NOTION_TOKEN`
-- `NOTION_FOOD_DB_ID`
-
-Note: this val uses Val Town's `std/openai` proxy with `gpt-5-nano`, so no OpenAI API key is required.
+Run lint:
+```
+deno lint
+```
 
 Made with 🖖 by Paul Chin Jr. and Markal.

@@ -1,6 +1,6 @@
 import { email } from "https://esm.town/v/std/email";
 import { calculateCurrentStreak, countEntriesByDate, daysBetweenInclusive, getWeeklyRange, listDateRange } from "../shared/date.ts";
-import { fetchNotionPages } from "../shared/notion.ts";
+import { fetchNotionPages, NotionCreatedTimeProperty, NotionTextProperty } from "../shared/notion.ts";
 import {
   buildBadges,
   buildEncouragement,
@@ -105,6 +105,7 @@ export async function fetchEntries(
 }
 
 export function buildReport(entries: Entry[], start: string, end: string) {
+  // Compute summary stats and derive copy for email-friendly output.
   // Summary stats for the weekly rollup.
   const values = entries.map((entry) => entry.value);
   const count = values.length;
