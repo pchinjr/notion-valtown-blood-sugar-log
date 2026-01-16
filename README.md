@@ -116,7 +116,7 @@ Free tier note: the blood sugar val emails the account owner by default.
 
 The food val uses Val Town's `std/openai` proxy with `gpt-5-nano`, so no OpenAI API key is required.
 
-The monthly report val renders a static Praise Cage report page from SQLite rollups.
+The monthly report val renders a Memphis-inspired report page from SQLite rollups, with a month selector and partial-week toggle (auto-refresh).
 
 ## 4) Schedule the report
 

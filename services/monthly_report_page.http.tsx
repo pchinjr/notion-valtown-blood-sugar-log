@@ -147,45 +147,122 @@ function ReportPage(props: {
         <title>{title}</title>
         <style>{`
           :root {
-            --ink: #1f1b3a;
-            --sun: #ffdf3b;
-            --paper: #fff8dc;
-            --mint: #64f0a2;
-            --rose: #ff8ba7;
+            --ink: #1b1b1f;
+            --sun: #ffd84d;
+            --paper: #fff4d6;
+            --mint: #52e3b6;
+            --rose: #ff8aa1;
+            --sky: #6cc6ff;
+            --cobalt: #2f3cff;
           }
           * { box-sizing: border-box; }
           body {
             margin: 0;
-            background: radial-gradient(circle at top, #fff2b3, #fff8dc);
+            background: linear-gradient(135deg, #fff1b8, #ffe4ef 35%, #dff6ff 75%);
             color: var(--ink);
-            font-family: "Georgia", "Times New Roman", serif;
+            font-family: "Futura", "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
+          }
+          .bg-shapes {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background:
+              radial-gradient(circle at 6% 10%, var(--sun) 0 12px, transparent 13px),
+              radial-gradient(circle at 18% 30%, var(--mint) 0 10px, transparent 11px),
+              radial-gradient(circle at 28% 70%, var(--rose) 0 11px, transparent 12px),
+              radial-gradient(circle at 42% 12%, var(--sky) 0 9px, transparent 10px),
+              radial-gradient(circle at 60% 20%, var(--cobalt) 0 8px, transparent 9px),
+              radial-gradient(circle at 70% 75%, var(--sun) 0 14px, transparent 15px),
+              radial-gradient(circle at 82% 40%, var(--mint) 0 10px, transparent 11px),
+              radial-gradient(circle at 92% 18%, var(--rose) 0 9px, transparent 10px),
+              radial-gradient(circle at 95% 60%, var(--sky) 0 12px, transparent 13px),
+              linear-gradient(25deg, transparent 0 60%, rgba(47, 60, 255, 0.25) 60% 62%, transparent 62% 100%),
+              linear-gradient(-18deg, transparent 0 72%, rgba(82, 227, 182, 0.25) 72% 74%, transparent 74% 100%),
+              linear-gradient(90deg, transparent 0 12%, rgba(255, 138, 161, 0.25) 12% 14%, transparent 14% 100%);
+            background-repeat: no-repeat;
+          }
+          .bg-shapes::before,
+          .bg-shapes::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-repeat: no-repeat;
+            pointer-events: none;
+          }
+          .bg-shapes::before {
+            background-image:
+              linear-gradient(25deg, transparent 0 60%, rgba(47, 60, 255, 0.25) 60% 62%, transparent 62% 100%),
+              linear-gradient(-18deg, transparent 0 72%, rgba(82, 227, 182, 0.25) 72% 74%, transparent 74% 100%),
+              linear-gradient(90deg, transparent 0 12%, rgba(255, 138, 161, 0.25) 12% 14%, transparent 14% 100%);
+          }
+          .bg-shapes::after {
+            background: none;
+          }
+          .shape {
+            position: fixed;
+            z-index: 0;
+            pointer-events: none;
+          }
+          .shape svg {
+            display: block;
           }
           .wrap {
             max-width: 980px;
             margin: 0 auto;
             padding: 32px 20px 48px;
+            position: relative;
+          }
+          .wrap::before,
+          .wrap::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            border: 3px solid var(--ink);
+            background: var(--sky);
+            opacity: 0.9;
+          }
+          .wrap::before {
+            width: 120px;
+            height: 120px;
+            top: 10px;
+            right: -30px;
+            transform: rotate(12deg);
+          }
+          .wrap::after {
+            width: 80px;
+            height: 80px;
+            bottom: 10px;
+            left: -20px;
+            background: var(--rose);
+            transform: rotate(-8deg);
           }
           .header {
-            border: 3px solid var(--ink);
+            border: 4px solid var(--ink);
             background: var(--sun);
-            padding: 16px 20px;
-            box-shadow: 6px 6px 0 var(--ink);
+            padding: 18px 22px;
+            box-shadow: 8px 8px 0 var(--ink);
+            position: relative;
+            z-index: 1;
           }
           .header h1 {
             margin: 0;
-            font-size: 32px;
-            letter-spacing: 0.5px;
+            font-size: 34px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
           }
           .sub {
             margin: 8px 0 0;
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 13px;
+            font-weight: 800;
           }
           .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 16px;
             margin-top: 20px;
+            position: relative;
+            z-index: 1;
           }
           .controls {
             margin-top: 18px;
@@ -194,7 +271,7 @@ function ReportPage(props: {
             gap: 12px;
             align-items: center;
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 800;
           }
           .controls label {
             display: inline-flex;
@@ -211,39 +288,63 @@ function ReportPage(props: {
             background: white;
           }
           .controls button {
-            background: var(--mint);
-            box-shadow: 2px 2px 0 var(--ink);
+            background: var(--cobalt);
+            color: white;
+            box-shadow: 3px 3px 0 var(--ink);
             cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
           }
           .card {
             background: white;
+            border: 3px solid var(--ink);
+            box-shadow: 6px 6px 0 var(--ink);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+          }
+          .card::after {
+            content: "";
+            position: absolute;
+            width: 140px;
+            height: 12px;
+            background: var(--sun);
             border: 2px solid var(--ink);
-            box-shadow: 4px 4px 0 var(--ink);
-            padding: 16px;
+            bottom: 16px;
+            right: -18px;
+            transform: rotate(-6deg);
           }
           .card h2 {
             margin: 0 0 12px;
             font-size: 20px;
             text-transform: uppercase;
+            border-bottom: 3px solid var(--ink);
+            padding-bottom: 6px;
           }
           .stat {
             display: flex;
             justify-content: space-between;
             padding: 4px 0;
-            font-size: 14px;
+            font-size: 15px;
+            font-weight: 700;
+          }
+          .stat span:last-child {
+            font-size: 16px;
+            font-weight: 800;
           }
           .badge {
             display: inline-block;
             margin: 6px 6px 0 0;
             padding: 6px 8px;
-            background: var(--mint);
+            background: var(--rose);
             border: 2px solid var(--ink);
-            font-weight: 700;
+            font-weight: 800;
             font-size: 12px;
+            text-transform: uppercase;
           }
           .macro {
             background: var(--paper);
-            border: 2px solid var(--ink);
+            border: 3px solid var(--ink);
             padding: 8px 10px;
             margin-top: 10px;
             font-size: 13px;
@@ -251,10 +352,46 @@ function ReportPage(props: {
           .footer {
             margin-top: 24px;
             font-size: 12px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
           }
         `}</style>
       </head>
       <body>
+        <div className="bg-shapes" aria-hidden="true"></div>
+        <div className="shape" style={{ top: "6%", left: "6%", transform: "rotate(-6deg)" }} aria-hidden="true">
+          <svg width="110" height="110" viewBox="0 0 110 110" role="presentation">
+            <polygon points="5,105 105,105 55,5" fill="#ffd84d" stroke="#1b1b1f" strokeWidth="4" />
+          </svg>
+        </div>
+        <div className="shape" style={{ top: "18%", right: "8%", transform: "rotate(10deg)" }} aria-hidden="true">
+          <svg width="150" height="70" viewBox="0 0 150 70" role="presentation">
+            <path
+              d="M5 45 C25 10, 45 10, 65 45 S110 80, 145 45"
+              fill="none"
+              stroke="#2f3cff"
+              strokeWidth="6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+        <div className="shape" style={{ bottom: "8%", right: "6%", transform: "rotate(-12deg)" }} aria-hidden="true">
+          <svg width="130" height="130" viewBox="0 0 130 130" role="presentation">
+            <polygon points="10,10 120,65 10,120" fill="#6cc6ff" stroke="#1b1b1f" strokeWidth="4" />
+          </svg>
+        </div>
+        <div className="shape" style={{ bottom: "18%", left: "10%" }} aria-hidden="true">
+          <svg width="170" height="80" viewBox="0 0 170 80" role="presentation">
+            <path
+              d="M5 40 C30 5, 55 5, 80 40 S130 75, 165 40"
+              fill="none"
+              stroke="#ff8aa1"
+              strokeWidth="6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
         <div className="wrap">
           <header className="header">
             <h1>{title}</h1>
