@@ -7,8 +7,8 @@ import {
   groupEntriesByDate,
   hasPerfectWeekStreak,
   type Entry,
-} from "./collectors/blood_sugar_report.cron.tsx";
-import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./shared/date.ts";
+} from "../shared/blood_sugar_logic.ts";
+import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "../shared/date.ts";
 import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 Deno.test("listDateRange returns inclusive dates", () => {
