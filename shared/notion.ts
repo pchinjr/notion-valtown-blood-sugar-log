@@ -1,5 +1,6 @@
 export const NOTION_VERSION = "2022-06-28";
 
+// Minimal Notion types used by the collectors.
 export type NotionRichText = { plain_text: string };
 export type NotionDateProperty = { date: { start: string } | null };
 export type NotionNumberProperty = { number: number | null };
@@ -18,6 +19,7 @@ export type NotionQueryResponse = {
   next_cursor: string | null;
 };
 
+// Fetch all pages from a Notion database (handles pagination).
 export async function fetchNotionPages<T extends NotionPage>(
   databaseId: string,
   token: string,
@@ -58,6 +60,7 @@ export async function fetchNotionPages<T extends NotionPage>(
   return pages;
 }
 
+// Update a Notion page's properties.
 export async function updateNotionPage(
   pageId: string,
   token: string,
@@ -82,6 +85,7 @@ export async function updateNotionPage(
   }
 }
 
+// Runtime guard for Notion query responses.
 function isNotionQueryResponse(value: unknown): value is NotionQueryResponse {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;

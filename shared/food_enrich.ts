@@ -8,6 +8,7 @@ import {
 } from "./notion.ts";
 import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./date.ts";
 
+// Macro keys and entry types for the food log.
 export type MacroKey = "calories" | "protein" | "carbs" | "fat" | "fiber" | "sugar" | "sodium";
 
 export type Entry = {
@@ -46,6 +47,7 @@ export type FoodRollup = {
   runId: string;
 };
 
+// Mapping from Notion property names to macro fields.
 export const PROPERTY_NAMES = {
   title: "food",
   loggedAt: "Created time",
@@ -60,6 +62,7 @@ export const PROPERTY_NAMES = {
   },
 };
 
+// Parse a Notion page into a normalized food entry.
 export function parseEntry(page: NotionPage): Entry | null {
   const props = page.properties ?? {};
   const loggedAtProp = props[PROPERTY_NAMES.loggedAt] as
@@ -86,6 +89,7 @@ export function parseEntry(page: NotionPage): Entry | null {
   };
 }
 
+// Normalize Notion title/rich_text into a single plain string.
 export function extractFoodName(
   prop:
     | NotionTitleProperty
@@ -105,6 +109,7 @@ export function extractFoodName(
   return null;
 }
 
+// Read macro number properties from a Notion page.
 export function extractMacros(
   props: Record<string, NotionDateProperty | NotionNumberProperty | NotionTextProperty | NotionTitleProperty | unknown>,
 ): Partial<Record<MacroKey, number>> {
@@ -117,6 +122,7 @@ export function extractMacros(
   return macros;
 }
 
+// Only enrich entries missing core macros.
 export function shouldEnrich(entry: Entry): boolean {
   return (
     entry.macros.calories === undefined ||
@@ -126,8 +132,8 @@ export function shouldEnrich(entry: Entry): boolean {
   );
 }
 
+// Shape Notion property updates for numeric columns only.
 export function buildNutritionProperties(macros: Partial<Record<MacroKey, number>>): Record<string, unknown> {
-  // Shape Notion property updates for numeric columns only.
   const props: Record<string, unknown> = {};
   if (macros.calories !== undefined) props[PROPERTY_NAMES.macros.calories] = { number: macros.calories };
   if (macros.protein !== undefined) props[PROPERTY_NAMES.macros.protein] = { number: macros.protein };
@@ -139,6 +145,7 @@ export function buildNutritionProperties(macros: Partial<Record<MacroKey, number
   return props;
 }
 
+// Build the weekly food rollup stored in SQLite.
 export function buildFoodRollup(entries: Entry[], start: string, end: string): FoodRollup {
   const dateRange = listDateRange(start, end);
   const entriesByDate = countEntriesByDate(entries);
@@ -178,16 +185,18 @@ export function buildFoodRollup(entries: Entry[], start: string, end: string): F
   };
 }
 
+// Consistent rounding helper for macro math.
 export function roundNumber(value: number): number {
   return Number(value.toFixed(2));
 }
 
+// Simple prompt for the macro estimation model.
 export function buildNutritionPrompt(food: string): string {
   return `Estimate macros for: "${food}". Assume a typical single serving.`;
 }
 
+// Guard against non-JSON responses from the model.
 export function safeParseJson(value: string): unknown {
-  // Guard against non-JSON responses from the model.
   try {
     return JSON.parse(value);
   } catch {
@@ -195,6 +204,7 @@ export function safeParseJson(value: string): unknown {
   }
 }
 
+// Aggregate macro stats across entries.
 function calculateMacroSummary(entries: Entry[]): Partial<Record<MacroKey, MacroStats>> {
   const summary: Partial<Record<MacroKey, MacroStats>> = {};
   for (const entry of entries) {
@@ -211,6 +221,7 @@ function calculateMacroSummary(entries: Entry[]): Partial<Record<MacroKey, Macro
   return summary;
 }
 
+// Coerce model output into numeric macro fields.
 export function coerceMacros(value: Record<string, unknown>): Partial<Record<MacroKey, number>> {
   const macros: Partial<Record<MacroKey, number>> = {};
   macros.calories = coerceNumber(value.calories);
@@ -225,6 +236,7 @@ export function coerceMacros(value: Record<string, unknown>): Partial<Record<Mac
   ) as Partial<Record<MacroKey, number>>;
 }
 
+// Convert a string or number into a rounded macro value.
 export function coerceNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return roundNumber(value);
   if (typeof value === "string") {

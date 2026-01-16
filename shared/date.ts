@@ -1,3 +1,4 @@
+// Date helpers shared across rollup logic.
 export function getWeeklyRange(): { start: string; end: string } {
   const today = new Date();
   const end = toDateOnly(today);
@@ -7,10 +8,12 @@ export function getWeeklyRange(): { start: string; end: string } {
   return { start, end };
 }
 
+// Convert a Date into YYYY-MM-DD (UTC).
 export function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+// Count days between two YYYY-MM-DD values, inclusive.
 export function daysBetweenInclusive(start: string, end: string): number {
   const startDate = new Date(`${start}T00:00:00Z`);
   const endDate = new Date(`${end}T00:00:00Z`);
@@ -18,6 +21,7 @@ export function daysBetweenInclusive(start: string, end: string): number {
   return Math.floor(ms / 86400000) + 1;
 }
 
+// List each day (YYYY-MM-DD) between two dates, inclusive.
 export function listDateRange(start: string, end: string): string[] {
   const startDate = new Date(`${start}T00:00:00Z`);
   const endDate = new Date(`${end}T00:00:00Z`);
@@ -30,6 +34,7 @@ export function listDateRange(start: string, end: string): string[] {
   return dates;
 }
 
+// Tally entries per date for quick rollup math.
 export function countEntriesByDate<T extends { date: string }>(entries: T[]): Record<string, number> {
   return entries.reduce<Record<string, number>>((acc, entry) => {
     acc[entry.date] = (acc[entry.date] ?? 0) + 1;
@@ -37,6 +42,7 @@ export function countEntriesByDate<T extends { date: string }>(entries: T[]): Re
   }, {});
 }
 
+// Count consecutive days from the end of the range with at least one entry.
 export function calculateCurrentStreak(dateRange: string[], dateCounts: Record<string, number>): number {
   let streak = 0;
   for (let i = dateRange.length - 1; i >= 0; i -= 1) {

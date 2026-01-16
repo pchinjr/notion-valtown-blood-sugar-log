@@ -1,5 +1,6 @@
 import { calculateCurrentStreak, listDateRange } from "./date.ts";
 
+// Types shared by the monthly rollup page.
 export type Rollup = {
   category: string;
   periodStart: string;
@@ -62,6 +63,7 @@ type BloodSugarStatsShape = {
   totalEntries?: number;
 };
 
+// Aggregate blood sugar rollups into a single monthly summary.
 export function aggregateBloodSugarMonth(
   rollups: Rollup[],
   monthStart: string,
@@ -118,6 +120,7 @@ export function aggregateBloodSugarMonth(
   };
 }
 
+// Aggregate food rollups into a single monthly summary.
 export function aggregateFoodMonth(
   rollups: Rollup[],
   monthStart: string,
@@ -156,6 +159,7 @@ export function aggregateFoodMonth(
   };
 }
 
+// Resolve the month range from a YYYY-MM string (or default to last month).
 export function resolveMonthRange(monthParam?: string | null, now = new Date()) {
   if (monthParam) {
     const match = monthParam.match(/^(\d{4})-(\d{2})$/);
@@ -174,6 +178,7 @@ export function resolveMonthRange(monthParam?: string | null, now = new Date()) 
   return { start: formatDate(start), end: formatDate(end) };
 }
 
+// Filter rollups to the desired month window.
 function filterRollups(
   rollups: Rollup[],
   monthStart: string,
@@ -188,6 +193,7 @@ function filterRollups(
   });
 }
 
+// Merge per-day counts across rollups (handling overlap safely).
 function mergeEntriesByDate(rollups: Rollup[], monthStart: string, monthEnd: string) {
   const entriesByDate: Record<string, number> = {};
   for (const rollup of rollups) {
@@ -203,6 +209,7 @@ function mergeEntriesByDate(rollups: Rollup[], monthStart: string, monthEnd: str
   return entriesByDate;
 }
 
+// Roll up macro stats across all matching rollups.
 function aggregateMacroSummary(rollups: Rollup[]) {
   const summary: Record<string, FoodMacroStats> = {};
   for (const rollup of rollups) {
@@ -219,10 +226,12 @@ function aggregateMacroSummary(rollups: Rollup[]) {
   return summary;
 }
 
+// Sum values of a date->count map.
 function sumValues(record: Record<string, number>) {
   return Object.values(record).reduce((sum, value) => sum + value, 0);
 }
 
+// Format a Date as YYYY-MM-DD (UTC).
 function formatDate(value: Date) {
   return value.toISOString().slice(0, 10);
 }

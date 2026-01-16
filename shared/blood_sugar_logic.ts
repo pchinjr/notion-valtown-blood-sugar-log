@@ -6,11 +6,13 @@ import {
   type NotionTextProperty,
 } from "./notion.ts";
 
+// Scoring constants for XP and bonuses.
 const XP_PER_ENTRY = 12;
 const STREAK_BONUS_MULTIPLIER = 1.2;
 const HEALTHY_AVG_BONUS_MULTIPLIER = 1.2;
 const HEALTHY_AVG_THRESHOLD = 100;
 
+// Notion page shape and normalized entry types.
 export type BloodSugarNotionPage = {
   id: string;
   properties: {
@@ -52,6 +54,7 @@ export type GroupedEntries = {
   pm: Entry[];
 };
 
+// Parse a Notion page into a normalized entry.
 export function parseEntry(page: BloodSugarNotionPage): Entry | null {
   // Normalize a Notion page into the minimal shape used by the report.
   const props = page.properties ?? {};
@@ -69,6 +72,7 @@ export function parseEntry(page: BloodSugarNotionPage): Entry | null {
   return { date: date.slice(0, 10), createdTime, value };
 }
 
+// Normalize various Notion "created time" formats into readable time strings.
 export function formatCreatedTime(value: string | null): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -86,10 +90,12 @@ export function formatCreatedTime(value: string | null): string | null {
   });
 }
 
+// Perfect streak means 2+ readings per day for a full week.
 export function hasPerfectWeekStreak(dateRange: string[], dateCounts: Record<string, number>): boolean {
   return dateRange.length >= 7 && dateRange.every((date) => (dateCounts[date] ?? 0) >= 2);
 }
 
+// XP is weighted by streak and healthy average bonuses.
 export function calculateXp(totalCount: number, avg: number, perfectWeekStreak: boolean): number {
   const baseXp = totalCount * XP_PER_ENTRY;
   if (baseXp === 0) return 0;
@@ -98,6 +104,7 @@ export function calculateXp(totalCount: number, avg: number, perfectWeekStreak: 
   return Math.round(baseXp * streakBonus * healthyAvgBonus);
 }
 
+// Build the weekly rollup stored in SQLite.
 export function buildBloodSugarRollup(entries: Entry[], start: string, end: string): BloodSugarRollup {
   const values = entries.map((entry) => entry.value);
   const count = values.length;
@@ -136,6 +143,7 @@ export function buildBloodSugarRollup(entries: Entry[], start: string, end: stri
   };
 }
 
+// Decide which badges to award for the week.
 export function buildBadges(
   _dateRange: string[],
   _dateCounts: Record<string, number>,
@@ -151,6 +159,7 @@ export function buildBadges(
   return badges;
 }
 
+// Short motivational copy for emails.
 export function buildEncouragement(completionRate: number, streak: number): string {
   if (completionRate >= 90) return "Amazing work — you kept a near-perfect log this week.";
   if (completionRate >= 70) return "Great consistency — you’re building a strong habit.";
@@ -159,6 +168,7 @@ export function buildEncouragement(completionRate: number, streak: number): stri
   return "Every entry helps — you’ve got this.";
 }
 
+// Group entries into a per-day AM/PM structure for reports.
 export function groupEntriesByDate(entries: Entry[], dateRange: string[]): GroupedEntries[] {
   // Bucket entries by date and AM/PM for consistent report formatting.
   const buckets: Record<string, { am: Entry[]; pm: Entry[] }> = {};
@@ -185,11 +195,13 @@ export function groupEntriesByDate(entries: Entry[], dateRange: string[]): Group
   }));
 }
 
+// Format a single line of the daily summary table.
 export function formatGroupedEntryLine(group: GroupedEntries): string {
   const [first, second] = formatFirstSecondText(group);
   return `${group.date} | 1st: ${first} | 2nd: ${second}`;
 }
 
+// Type guard for Notion created_time fields.
 export function isCreatedTimeProperty(value: unknown): value is NotionCreatedTimeProperty {
   return (
     !!value &&
@@ -199,6 +211,7 @@ export function isCreatedTimeProperty(value: unknown): value is NotionCreatedTim
   );
 }
 
+// Type guard for Notion rich_text fields.
 export function isTextProperty(value: unknown): value is NotionTextProperty {
   return (
     !!value &&
@@ -208,6 +221,7 @@ export function isTextProperty(value: unknown): value is NotionTextProperty {
   );
 }
 
+// Extract AM/PM from a time string if possible.
 function getMeridiem(value: string | null): "AM" | "PM" | null {
   if (!value) return null;
   const match = value.match(/\b(AM|PM)\b/i);
@@ -215,6 +229,7 @@ function getMeridiem(value: string | null): "AM" | "PM" | null {
   return match[1].toUpperCase() as "AM" | "PM";
 }
 
+// Pick the first two readings (with an overflow indicator).
 function formatFirstSecondText(group: GroupedEntries): [string, string] {
   const ordered = orderEntries(group);
   if (!ordered.length) return ["—", "—"];
@@ -225,6 +240,7 @@ function formatFirstSecondText(group: GroupedEntries): [string, string] {
   return [first, `${secondValue}${overflow}`];
 }
 
+// Order entries by time when present (unknown times go last).
 function orderEntries(group: GroupedEntries): Entry[] {
   const combined = [...group.am, ...group.pm];
   return combined.sort((a, b) => {
@@ -237,6 +253,7 @@ function orderEntries(group: GroupedEntries): Entry[] {
   });
 }
 
+// Convert "h:mm AM/PM" into minutes since midnight.
 function parseTimeToMinutes(value: string | null): number | null {
   if (!value) return null;
   const match = value.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);

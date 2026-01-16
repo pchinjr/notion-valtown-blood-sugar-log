@@ -12,12 +12,14 @@ export default async function (req: Request) {
   const url = new URL(req.url);
   const monthParam = url.searchParams.get("month");
   const now = new Date();
+  // Keep defaults aligned with the dropdown so the first render has data.
   const startYear = 2026;
   const selectedMonth = resolveSelectedMonth(monthParam, now, startYear);
   const { start, end } = resolveMonthRange(selectedMonth, now);
   const includePartialWeeks = url.searchParams.get("partial") === "true";
   const monthOptions = buildMonthOptions(startYear, now);
 
+  // Pull all rollups for the requested month window, then split by category.
   const rollups = await fetchRollups(start, end, includePartialWeeks);
   const bloodSugar = aggregateBloodSugarMonth(rollups.filter((r) => r.category === "blood_sugar"), start, end, {
     includePartialWeeks,
@@ -26,6 +28,7 @@ export default async function (req: Request) {
     includePartialWeeks,
   });
 
+  // Render a full HTML page as a string (server-side React).
   const html = renderToString(
     <ReportPage
       monthStart={start}
@@ -44,6 +47,7 @@ export default async function (req: Request) {
 }
 
 // Fetch weekly rollups for the month; optionally include overlapping weeks.
+// Query weekly rollups that overlap the selected month.
 async function fetchRollups(start: string, end: string, includePartialWeeks: boolean): Promise<Rollup[]> {
   const where = includePartialWeeks
     ? "period_start <= ? AND period_end >= ?"
@@ -71,7 +75,8 @@ async function fetchRollups(start: string, end: string, includePartialWeeks: boo
   return result.rows.map((row) => rowToRollup(row as Record<string, unknown> | unknown[]));
 }
 
-// Convert SQLite row arrays into typed rollup objects.
+// Convert SQLite array or object rows into typed rollup objects.
+// (The SQLite client can return either shape depending on context.)
 function rowToRollup(row: Record<string, unknown> | unknown[]): Rollup {
   const values = Array.isArray(row) ? row : [
     row.category,
@@ -128,6 +133,7 @@ function safeParseJson(value: unknown) {
   }
 }
 
+// Present the monthly report as a static HTML page.
 function ReportPage(props: {
   monthStart: string;
   monthEnd: string;
@@ -181,23 +187,6 @@ function ReportPage(props: {
               linear-gradient(-18deg, transparent 0 72%, rgba(82, 227, 182, 0.25) 72% 74%, transparent 74% 100%),
               linear-gradient(90deg, transparent 0 12%, rgba(255, 138, 161, 0.25) 12% 14%, transparent 14% 100%);
             background-repeat: no-repeat;
-          }
-          .bg-shapes::before,
-          .bg-shapes::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background-repeat: no-repeat;
-            pointer-events: none;
-          }
-          .bg-shapes::before {
-            background-image:
-              linear-gradient(25deg, transparent 0 60%, rgba(47, 60, 255, 0.25) 60% 62%, transparent 62% 100%),
-              linear-gradient(-18deg, transparent 0 72%, rgba(82, 227, 182, 0.25) 72% 74%, transparent 74% 100%),
-              linear-gradient(90deg, transparent 0 12%, rgba(255, 138, 161, 0.25) 12% 14%, transparent 14% 100%);
-          }
-          .bg-shapes::after {
-            background: none;
           }
           .shape {
             position: fixed;
@@ -359,6 +348,7 @@ function ReportPage(props: {
         `}</style>
       </head>
       <body>
+        {/* Decorative background layers */}
         <div className="bg-shapes" aria-hidden="true"></div>
         <div className="shape" style={{ top: "6%", left: "6%", transform: "rotate(-6deg)" }} aria-hidden="true">
           <svg width="110" height="110" viewBox="0 0 110 110" role="presentation">
@@ -398,6 +388,7 @@ function ReportPage(props: {
             <div className="sub">
               Range: {monthStart} → {monthEnd} {includePartialWeeks ? "(partial weeks included)" : "(full weeks only)"}
             </div>
+            {/* Month navigation is query-string driven for shareable URLs. */}
             <form className="controls" method="get" id="report-controls">
               <label>
                 Month
@@ -422,7 +413,8 @@ function ReportPage(props: {
             </form>
           </header>
 
-          <div className="grid">
+          {/* Main content: two summary cards */}
+          <main className="grid" aria-label="Monthly report summary">
             <section className="card">
               <h2>Blood Sugar</h2>
               <Stat label="Entries" value={bloodSugar.totalEntries} />
@@ -461,7 +453,7 @@ function ReportPage(props: {
                 ))}
               </div>
             </section>
-          </div>
+          </main>
 
           <div className="footer">
             Praise Cage mode: keep logging, keep winning. Data from weekly rollups stored in Val Town SQLite.
@@ -482,6 +474,7 @@ function ReportPage(props: {
               var target = event.target;
               if (!target) return;
               if (target.id === "month-select" || target.id === "partial-weeks") {
+                // Auto-refresh when controls change.
                 submitForm();
               }
             });
@@ -501,6 +494,7 @@ function Stat(props: { label: string; value: string | number }) {
   );
 }
 
+// Build the month dropdown from the first data year through the current month.
 function buildMonthOptions(startYear: number, now: Date): string[] {
   const options: string[] = [];
   const start = new Date(Date.UTC(startYear, 0, 1));
@@ -514,6 +508,7 @@ function buildMonthOptions(startYear: number, now: Date): string[] {
   return options;
 }
 
+// Use the query string if valid, otherwise default to last month.
 function resolveSelectedMonth(monthParam: string | null, now: Date, startYear: number): string {
   const minMonth = `${startYear}-01`;
   if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
@@ -526,12 +521,14 @@ function resolveSelectedMonth(monthParam: string | null, now: Date, startYear: n
   return fallback < minMonth ? minMonth : fallback;
 }
 
+// Format a Date as YYYY-MM for query params and dropdown values.
 function formatMonth(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 }
 
+// Date helper for iterating month-by-month.
 function addMonths(date: Date, amount: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + amount, 1));
 }
