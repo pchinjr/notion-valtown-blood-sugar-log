@@ -2,15 +2,13 @@ import {
   buildBadges,
   buildEncouragement,
   calculateXp,
-  calculateCurrentStreak,
-  countEntriesByDate,
   formatCreatedTime,
   formatGroupedEntryLine,
   groupEntriesByDate,
   hasPerfectWeekStreak,
-  listDateRange,
   type Entry,
-} from "./notion_weekly_report.ts";
+} from "./collectors/blood_sugar_report.cron.tsx";
+import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./shared/date.ts";
 import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
 Deno.test("listDateRange returns inclusive dates", () => {
