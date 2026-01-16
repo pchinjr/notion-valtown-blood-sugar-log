@@ -84,11 +84,13 @@ Create new Vals with the `vt` CLI, then sync from this repo:
 ```
 vt create blood_sugar_report
 vt create food_report
+vt create monthly_report_page
 ```
 
 Replace each generated Val file with the corresponding script from this repo:
 - `collectors/blood_sugar_report.cron.tsx`
 - `collectors/food_report.cron.tsx`
+- `services/monthly_report_page.http.tsx`
 
 Then push each Val:
 
@@ -113,6 +115,8 @@ Food log val:
 Free tier note: the blood sugar val emails the account owner by default.
 
 The food val uses Val Town's `std/openai` proxy with `gpt-5-nano`, so no OpenAI API key is required.
+
+The monthly report val renders a static Praise Cage report page from SQLite rollups.
 
 ## 4) Schedule the report
 
@@ -145,6 +149,9 @@ In other words: every Tuesday at 9:30am.
 - Adjust the stats, date range, or email formatting in `collectors/blood_sugar_report.cron.tsx`.
 - If you prefer different property names, update them in the script.
 - Weekly rollups for both categories are persisted to Val Town SQLite for monthly/quarterly summaries.
+- Monthly report page supports query params:
+  - `?month=YYYY-MM` (defaults to previous month)
+  - `?partial=true` to include overlapping weeks
 
 ## Development
 
