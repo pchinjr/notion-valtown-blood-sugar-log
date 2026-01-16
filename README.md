@@ -31,7 +31,7 @@ This project includes playful, Praise Cage-themed badges:
 - “Cage Match: Double-Check Champion”
 - “National Treasure: Healthy Average”
 
-You can rename or swap these in `notion_weekly_report.ts`.
+You can rename or swap these in `collectors/blood_sugar_report.cron.tsx`.
 
 ## Medical disclaimer
 
@@ -61,11 +61,11 @@ Open the database in the browser and copy the 32‑character ID in the URL.
 
 ## 3) Configure Val Town
 
-Create a new Val in Val Town and paste `notion_weekly_report.ts`.
+Create a new Val in Val Town and paste `collectors/blood_sugar_report.cron.tsx`.
 
 Add these secrets in Val Town (Settings → Secrets):
 - `NOTION_TOKEN`
-- `NOTION_DATABASE_ID`
+- `NOTION_BLOOD_SUGAR_DB_ID`
 - `REPORT_FROM_EMAIL` (optional, must be `your_username.valname@valtown.email`)
 - `REPORT_FROM_NAME` (optional)
 - `REPORT_REPLY_TO` (optional)
@@ -100,7 +100,27 @@ In other words: every Tuesday at 9:30am.
 
 ## 5) Customize
 
-- Adjust the stats, date range, or email formatting in `notion_weekly_report.ts`.
+- Adjust the stats, date range, or email formatting in `collectors/blood_sugar_report.cron.tsx`.
 - If you prefer different property names, update them in the script.
+
+## Food Log Enrichment (OpenAI)
+
+This repo also includes a food log enricher that reads your Notion food entries, estimates macros with OpenAI, and writes them back to the same database.
+
+### Notion database properties
+
+- `food` (Title or Text)
+- `Created time` (Created time)
+- `calories`, `protein`, `carbs`, `fats`, `fiber`, `sugar`, `sodium` (Number)
+
+### Val Town setup
+
+Create a new Val and paste `collectors/food_report.cron.tsx`.
+
+Add these secrets in Val Town:
+- `NOTION_TOKEN`
+- `NOTION_FOOD_DB_ID`
+
+Note: this val uses Val Town's `std/openai` proxy with `gpt-5-nano`, so no OpenAI API key is required.
 
 Made with 🖖 by Paul Chin Jr. and Markal.

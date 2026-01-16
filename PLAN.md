@@ -8,6 +8,7 @@
 - A friendly email report sent on a schedule (free tier friendly)
 - Tests for core logic (streaks, badges, XP)
 - A SQLite rollup module stub for future storage
+- A food log enricher that reads Notion entries, estimates macros with OpenAI, and writes them back
 
 ## Why this works well
 
@@ -51,3 +52,4 @@ This keeps the system simple while still scaling to many life areas.
 - Add a sample “collector” val for another Notion database (e.g., exercise)
  - Add run_id generation strategy (UUID or deterministic) and document it
  - Validate email layout on Gmail mobile and adjust spacing if needed
+- Improve food enrichment matching (confidence threshold, caching, or manual overrides)
