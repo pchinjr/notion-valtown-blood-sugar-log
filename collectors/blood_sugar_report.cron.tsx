@@ -1,6 +1,7 @@
 import { email } from "https://esm.town/v/std/email";
 import { calculateCurrentStreak, countEntriesByDate, daysBetweenInclusive, getWeeklyRange, listDateRange } from "../shared/date.ts";
-import { fetchNotionPages, NotionCreatedTimeProperty, NotionTextProperty } from "../shared/notion.ts";
+import { fetchNotionPages } from "../shared/notion.ts";
+import { initRollupSchema, upsertWeeklyRollup } from "../storage/rollups.ts";
 import {
   buildBadges,
   buildEncouragement,
@@ -42,6 +43,9 @@ export default async function handler(): Promise<Response> {
 
   await email(emailPayload);
   console.log("Email sent.");
+
+  await initRollupSchema();
+  await upsertWeeklyRollup(report.rollup);
 
   return new Response("Weekly report sent.", { status: 200 });
 }
@@ -168,7 +172,27 @@ export function buildReport(entries: Entry[], start: string, end: string) {
     perfectWeekStreak,
   });
 
-  return { subject, text, html };
+  const rollup = {
+    category: "blood_sugar",
+    periodStart: start,
+    periodEnd: end,
+    streak: currentStreak,
+    completionRate,
+    xp,
+    badges,
+    stats: {
+      totalEntries: count,
+      avg,
+      min,
+      max,
+      entriesByDate: dateCounts,
+      expected,
+      missing,
+    },
+    runId: `blood_sugar-${start}-${end}`,
+  };
+
+  return { subject, text, html, rollup };
 }
 
 function formatFirstSecondHtml(group: GroupedEntries): [string, string] {
@@ -364,14 +388,4 @@ export function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-}
-
-export function isCreatedTimeProperty(value: unknown): value is NotionCreatedTimeProperty {
-  if (!value || typeof value !== "object") return false;
-  return "created_time" in (value as Record<string, unknown>);
-}
-
-export function isTextProperty(value: unknown): value is NotionTextProperty {
-  if (!value || typeof value !== "object") return false;
-  return "rich_text" in (value as Record<string, unknown>);
 }

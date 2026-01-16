@@ -6,6 +6,7 @@ import {
   type NotionTextProperty,
   type NotionTitleProperty,
 } from "./notion.ts";
+import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./date.ts";
 
 export type MacroKey = "calories" | "protein" | "carbs" | "fat" | "fiber" | "sugar" | "sodium";
 
@@ -15,6 +16,34 @@ export type Entry = {
   loggedAt: string;
   food: string;
   macros: Partial<Record<MacroKey, number>>;
+};
+
+export type MacroStats = {
+  count: number;
+  total: number;
+  avg: number;
+};
+
+export type FoodStats = {
+  totalEntries: number;
+  uniqueDays: number;
+  entriesByDate: Record<string, number>;
+  avgEntriesPerDay: number;
+  minEntriesPerDay: number;
+  maxEntriesPerDay: number;
+  macroSummary: Partial<Record<MacroKey, MacroStats>>;
+};
+
+export type FoodRollup = {
+  category: string;
+  periodStart: string;
+  periodEnd: string;
+  streak: number;
+  completionRate: number;
+  xp: number;
+  badges: string[];
+  stats: FoodStats;
+  runId: string;
 };
 
 export const PROPERTY_NAMES = {
@@ -110,6 +139,45 @@ export function buildNutritionProperties(macros: Partial<Record<MacroKey, number
   return props;
 }
 
+export function buildFoodRollup(entries: Entry[], start: string, end: string): FoodRollup {
+  const dateRange = listDateRange(start, end);
+  const entriesByDate = countEntriesByDate(entries);
+  const uniqueDays = dateRange.filter((date) => (entriesByDate[date] ?? 0) > 0).length;
+  const totalEntries = entries.length;
+  const avgEntriesPerDay = dateRange.length ? Number((totalEntries / dateRange.length).toFixed(2)) : 0;
+  const minEntriesPerDay = dateRange.length
+    ? Math.min(...dateRange.map((date) => entriesByDate[date] ?? 0))
+    : 0;
+  const maxEntriesPerDay = dateRange.length
+    ? Math.max(...dateRange.map((date) => entriesByDate[date] ?? 0))
+    : 0;
+  const completionRate = dateRange.length ? Math.round((uniqueDays / dateRange.length) * 100) : 0;
+  const streak = calculateCurrentStreak(dateRange, entriesByDate);
+  const macroSummary = calculateMacroSummary(entries);
+
+  const runId = `food-${start}-${end}`;
+
+  return {
+    category: "food",
+    periodStart: start,
+    periodEnd: end,
+    streak,
+    completionRate,
+    xp: 0,
+    badges: [],
+    stats: {
+      totalEntries,
+      uniqueDays,
+      entriesByDate,
+      avgEntriesPerDay,
+      minEntriesPerDay,
+      maxEntriesPerDay,
+      macroSummary,
+    },
+    runId,
+  };
+}
+
 export function roundNumber(value: number): number {
   return Number(value.toFixed(2));
 }
@@ -125,6 +193,22 @@ export function safeParseJson(value: string): unknown {
   } catch {
     return null;
   }
+}
+
+function calculateMacroSummary(entries: Entry[]): Partial<Record<MacroKey, MacroStats>> {
+  const summary: Partial<Record<MacroKey, MacroStats>> = {};
+  for (const entry of entries) {
+    for (const key of Object.keys(entry.macros) as MacroKey[]) {
+      const value = entry.macros[key];
+      if (typeof value !== "number") continue;
+      const current = summary[key] ?? { count: 0, total: 0, avg: 0 };
+      current.count += 1;
+      current.total += value;
+      current.avg = Number((current.total / current.count).toFixed(2));
+      summary[key] = current;
+    }
+  }
+  return summary;
 }
 
 export function coerceMacros(value: Record<string, unknown>): Partial<Record<MacroKey, number>> {

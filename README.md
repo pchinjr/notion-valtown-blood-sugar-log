@@ -144,6 +144,7 @@ In other words: every Tuesday at 9:30am.
 
 - Adjust the stats, date range, or email formatting in `collectors/blood_sugar_report.cron.tsx`.
 - If you prefer different property names, update them in the script.
+- Weekly rollups for both categories are persisted to Val Town SQLite for monthly/quarterly summaries.
 
 ## Development
 

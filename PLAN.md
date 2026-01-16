@@ -9,6 +9,7 @@
 - Tests for core logic (streaks, badges, XP)
 - A SQLite rollup module stub for future storage
 - A food log enricher that reads Notion entries, estimates macros with OpenAI, and writes them back
+- Weekly rollups persisted to SQLite for blood sugar and food
 
 ## Why this works well
 
@@ -16,9 +17,9 @@
 - We compute the rollup once per week and send it as a summary
 - We can reuse the same pattern for other life areas (exercise, meals, goals)
 
-## Next step: store rollups in SQLite
+## Next step: analyze rollups in SQLite
 
-We’ll store weekly rollups (badges, streaks, XP) in Val Town’s SQLite so we can:
+We store weekly rollups (badges, streaks, XP) in Val Town’s SQLite so we can:
 - build monthly and yearly summaries without re-reading Notion
 - compare across categories (e.g., blood sugar vs exercise)
 - keep a long-term history even if we rename Notion pages
@@ -46,7 +47,6 @@ This keeps the system simple while still scaling to many life areas.
 
 ## What’s left to do
 
-- Wire the weekly report to write rollups into SQLite after each run
 - Define XP/badge rule config so new trackers can reuse it
 - Add monthly and yearly rollup reports (from SQLite, not Notion)
 - Add a sample “collector” val for another Notion database (e.g., exercise)

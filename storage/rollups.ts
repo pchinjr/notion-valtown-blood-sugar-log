@@ -54,11 +54,6 @@ export async function initRollupSchema() {
 
 export async function upsertWeeklyRollup(rollup: WeeklyRollup) {
   const createdAt = new Date().toISOString();
-  const existing = await sqlite.execute(
-    `SELECT id FROM ${WEEKLY_ROLLUPS_TABLE} WHERE run_id = ? LIMIT 1`,
-    [rollup.runId],
-  );
-  if (existing.rows.length) return;
   await sqlite.execute(
     `INSERT OR REPLACE INTO ${WEEKLY_ROLLUPS_TABLE} (
       category,

@@ -4,6 +4,7 @@ import { fetchNotionPages, type NotionPage, updateNotionPage } from "../shared/n
 import {
   buildNutritionPrompt,
   buildNutritionProperties,
+  buildFoodRollup,
   coerceMacros,
   type Entry,
   type MacroKey,
@@ -12,6 +13,7 @@ import {
   safeParseJson,
   shouldEnrich,
 } from "../shared/food_enrich.ts";
+import { initRollupSchema, upsertWeeklyRollup } from "../storage/rollups.ts";
 
 type NotionConfig = {
   token: string;
@@ -50,8 +52,13 @@ export default async function () {
       properties,
     });
     await updateNotionPage(entry.pageId, notionConfig.token, properties);
+    entry.macros = { ...entry.macros, ...enrichment.macros };
     enriched += 1;
   }
+
+  await initRollupSchema();
+  const rollup = buildFoodRollup(entries, start, end);
+  await upsertWeeklyRollup(rollup);
 
   return new Response(`Weekly food entries logged. Enriched ${enriched}.`, { status: 200 });
 }
@@ -93,6 +100,7 @@ async function fetchNutrition(
 } | null> {
   // Ask the model for a strict JSON payload and coerce to numeric fields.
   const prompt = buildNutritionPrompt(foodName);
+  // Keep the OpenAI request compact to control costs.
 
   const completion = await openai.chat.completions.create({
     model: "gpt-5-nano",

@@ -11,6 +11,7 @@ import {
   safeParseJson,
   shouldEnrich,
   type Entry,
+  buildFoodRollup,
 } from "../shared/food_enrich.ts";
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
@@ -140,4 +141,30 @@ Deno.test("coerceMacros filters invalid fields", () => {
 
 Deno.test("roundNumber rounds to two decimals", () => {
   assertEquals(roundNumber(3.14159), 3.14);
+});
+
+Deno.test("buildFoodRollup aggregates weekly stats", () => {
+  const entries: Entry[] = [
+    {
+      pageId: "page-1",
+      date: "2026-01-01",
+      loggedAt: "2026-01-01T12:00:00.000Z",
+      food: "toast",
+      macros: { calories: 100, protein: 4 },
+    },
+    {
+      pageId: "page-2",
+      date: "2026-01-02",
+      loggedAt: "2026-01-02T12:00:00.000Z",
+      food: "eggs",
+      macros: { calories: 200, protein: 12 },
+    },
+  ];
+  const rollup = buildFoodRollup(entries, "2026-01-01", "2026-01-07");
+  assertEquals(rollup.category, "food");
+  assertEquals(rollup.stats.totalEntries, 2);
+  assertEquals(rollup.stats.uniqueDays, 2);
+  assertEquals(rollup.stats.entriesByDate["2026-01-01"], 1);
+  assertEquals(rollup.stats.entriesByDate["2026-01-02"], 1);
+  assertEquals(rollup.runId, "food-2026-01-01-2026-01-07");
 });
