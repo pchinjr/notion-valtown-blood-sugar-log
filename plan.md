@@ -9,6 +9,7 @@
 - Tests for core logic (streaks, badges, XP)
 - A SQLite rollup module stub for future storage
 - A food log enricher that reads Notion entries, estimates macros with OpenAI, and writes them back
+- Food enrichment now normalizes entries with OpenAI, infers serving sizes, and uses FatSecret's detailed nutrition
 - Weekly rollups persisted to SQLite for blood sugar and food
 - Monthly rollup report page with a month selector (Memphis-styled)
 
@@ -53,4 +54,4 @@ This keeps the system simple while still scaling to many life areas.
 - Add a sample “collector” val for another Notion database (e.g., exercise)
  - Add run_id generation strategy (UUID or deterministic) and document it
  - Validate email layout on Gmail mobile and adjust spacing if needed
-- Improve food enrichment matching (confidence threshold, caching, or manual overrides)
+- Add serving-size overrides and caching for food enrichment

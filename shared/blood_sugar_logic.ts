@@ -1,10 +1,7 @@
 import { calculateCurrentStreak, countEntriesByDate, listDateRange } from "./date.ts";
-import {
-  type NotionCreatedTimeProperty,
-  type NotionDateProperty,
-  type NotionNumberProperty,
-  type NotionTextProperty,
-} from "./notion.ts";
+import { type NotionCreatedTimeProperty, type NotionNumberProperty, type NotionTextProperty } from "./notion.ts";
+
+const REPORT_TIMEZONE = "America/New_York";
 
 // Scoring constants for XP and bonuses.
 const XP_PER_ENTRY = 12;
@@ -16,9 +13,8 @@ const HEALTHY_AVG_THRESHOLD = 100;
 export type BloodSugarNotionPage = {
   id: string;
   properties: {
-    "Measurement Date"?: NotionDateProperty;
     "Blood Sugar Level"?: NotionNumberProperty;
-    "Created Time"?: NotionCreatedTimeProperty | NotionTextProperty;
+    "Created time"?: NotionCreatedTimeProperty | NotionTextProperty;
   };
 };
 
@@ -58,18 +54,50 @@ export type GroupedEntries = {
 export function parseEntry(page: BloodSugarNotionPage): Entry | null {
   // Normalize a Notion page into the minimal shape used by the report.
   const props = page.properties ?? {};
-  const date = props["Measurement Date"]?.date?.start ?? null;
   const value = props["Blood Sugar Level"]?.number ?? null;
-  if (!date || typeof value !== "number") return null;
-
-  const createdProp = props["Created Time"];
+  const createdProp = props["Created time"];
   const createdTimeRaw = isCreatedTimeProperty(createdProp)
     ? createdProp.created_time
     : isTextProperty(createdProp)
     ? createdProp.rich_text?.[0]?.plain_text ?? null
     : null;
+  if (!createdTimeRaw || typeof value !== "number") return null;
+  const date = extractDate(createdTimeRaw);
+  if (!date) return null;
   const createdTime = formatCreatedTime(createdTimeRaw);
-  return { date: date.slice(0, 10), createdTime, value };
+  return { date, createdTime, value };
+}
+
+function extractDate(value: string): string | null {
+  const trimmed = value.trim();
+  const textMatch = trimmed.match(
+    /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})\s+(\d{1,2}):(\d{2})\s*([AP]M)$/i,
+  );
+  if (textMatch) {
+    const monthMap: Record<string, number> = {
+      january: 1,
+      february: 2,
+      march: 3,
+      april: 4,
+      may: 5,
+      june: 6,
+      july: 7,
+      august: 8,
+      september: 9,
+      october: 10,
+      november: 11,
+      december: 12,
+    };
+    const month = monthMap[textMatch[1].toLowerCase()];
+    const day = Number(textMatch[2]);
+    const year = Number(textMatch[3]);
+    if (!month || Number.isNaN(day) || Number.isNaN(year)) return null;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return formatDateInTimeZone(parsed, REPORT_TIMEZONE);
 }
 
 // Normalize various Notion "created time" formats into readable time strings.
@@ -86,8 +114,22 @@ export function formatCreatedTime(value: string | null): string | null {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: "UTC",
+    timeZone: REPORT_TIMEZONE,
   });
+}
+
+function formatDateInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const lookup = parts.reduce<Record<string, string>>((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
 }
 
 // Perfect streak means 2+ readings per day for a full week.

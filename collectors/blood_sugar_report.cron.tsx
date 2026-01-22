@@ -90,11 +90,11 @@ export async function fetchEntries(
   const pages = await fetchNotionPages<BloodSugarNotionPage>(notionConfig.databaseId, notionConfig.token, (cursor) => ({
       filter: {
         and: [
-          { property: "Measurement Date", date: { on_or_after: start } },
-          { property: "Measurement Date", date: { on_or_before: end } },
+          { property: "Created time", created_time: { on_or_after: start } },
+          { property: "Created time", created_time: { on_or_before: end } },
         ],
       },
-      sorts: [{ property: "Measurement Date", direction: "ascending" }],
+      sorts: [{ property: "Created time", direction: "ascending" }],
       ...(cursor ? { start_cursor: cursor } : {}),
     }));
 

@@ -46,8 +46,7 @@ https://www.ynhhs.org/articles/what-is-healthy-blood-sugar
 Create a new database in Notion (table view is easiest) with these properties:
 
 - **Entry** (Title)
-- **Created Time** (Created time) or **Created Time** (Text)
-- **Measurement Date** (Date) (e.g., `January 13, 2026`)
+- **Created time** (Created time)
 - **Blood Sugar Level** (Number)
 
 You can name the database anything (e.g., "Blood Sugar Log").
@@ -67,6 +66,17 @@ Create another Notion database with these properties (exact names expected):
 - `sodium` (Number)
 
 Only `food` and `Created time` are required for reading. The rest are written by the val.
+The food val uses OpenAI to normalize entries and infer a reasonable serving size, then pulls detailed
+nutrition from FatSecret (`food.get`) for calories, protein, carbs, fat, fiber, sugar, and sodium.
+Macros are scaled by the inferred serving size using FatSecret's default serving.
+
+Example:
+- Input: `shrimp lo mein`
+- OpenAI normalization: `{ "items": [{ "name": "shrimp lo mein", "servings": 1 }] }`
+- FatSecret returns macros per default serving, and the val writes those directly.
+- Input: `2 slices pepperoni pizza and salad`
+- OpenAI normalization: `{ "items": [{ "name": "pepperoni pizza", "servings": 2 }, { "name": "salad", "servings": 1 }] }`
+- The val scales each item's macros by its servings and sums the results.
 
 ## 2) Create a Notion integration
 
