@@ -1,4 +1,6 @@
-import { sqlite } from "https://esm.town/v/stevekrouse/sqlite";
+import { sqlite } from "./sqlite.ts";
+
+// Provides typed helpers for the val-scoped SQLite tables that back weekly rollups and badge history.
 
 const WEEKLY_ROLLUPS_TABLE = "weekly_rollups_1";
 const BADGE_EVENTS_TABLE = "badge_events_1";

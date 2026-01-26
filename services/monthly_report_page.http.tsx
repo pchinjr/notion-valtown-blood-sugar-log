@@ -1,6 +1,6 @@
 import React from "https://esm.sh/react@18.2.0";
 import { renderToString } from "https://esm.sh/react-dom@18.2.0/server";
-import { sqlite } from "https://esm.town/v/stevekrouse/sqlite";
+import { sqlite } from "../storage/sqlite.ts";
 import {
   aggregateBloodSugarMonth,
   aggregateFoodMonth,
@@ -8,6 +8,7 @@ import {
   type Rollup,
 } from "../shared/monthly_report.ts";
 
+// HTTP val that renders a monthly dashboard directly from the val-scoped DB.
 export default async function (req: Request) {
   const url = new URL(req.url);
   const monthParam = url.searchParams.get("month");

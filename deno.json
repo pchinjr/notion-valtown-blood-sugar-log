@@ -27,6 +27,6 @@
     "unstable-sloppy-imports": true
   },
   "tasks": {
-    "test": "deno test --allow-import --reporter=dot"
+    "test": "deno test --allow-import --allow-env=VAL_TOWN_API_KEY --reporter=dot"
   }
 }

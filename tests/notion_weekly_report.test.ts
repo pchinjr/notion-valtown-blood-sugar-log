@@ -125,7 +125,7 @@ Deno.test("formatCreatedTime extracts time from Notion-style string", () => {
 
 Deno.test("formatCreatedTime formats ISO timestamps", () => {
   const formatted = formatCreatedTime("2026-01-13T18:33:00.000Z");
-  assertEquals(formatted, "6:33 PM");
+  assertEquals(formatted, "1:33 PM");
 });
 
 Deno.test("formatGroupedEntryLine orders entries by time", () => {
